@@ -9,6 +9,16 @@ import replicate
 import requests
 
 
+def focus_previous_widget(event):
+    event.widget.tk_focusPrev().focus()
+    return "break"
+
+
+def focus_next_widget(event):
+    event.widget.tk_focusNext().focus()
+    return "break"
+
+
 class ImageGeneratorGUI:
     def __init__(self, master):
         self.output_text = None
@@ -54,19 +64,17 @@ class ImageGeneratorGUI:
         self.generate_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
 
         # Output
-        self.output_text = tk.Text(self.master, height=10, width=70)
+        self.output_text = tk.Text(self.master, height=10, width=70, state="disabled")
         self.output_text.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
 
         self.initialize_variables()
         self.update_parameter_fields()
 
     def initialize_variables(self):
-        # Common variables
         self.common_vars = {
             "aspect_ratio": tk.StringVar(value="16:9"),
         }
 
-        # Model-specific variables
         self.model_specific_vars = {
             "pro": {
                 "steps": tk.IntVar(value=25),
@@ -134,7 +142,8 @@ class ImageGeneratorGUI:
 
     def browse_image(self):
         filename = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg")])
-        self.model_specific_vars["dev"]["image_path"].set(filename)
+        if filename:
+            self.model_specific_vars["dev"]["image_path"].set(filename)
 
     def generate_image(self):
         model = self.model_var.get()
@@ -156,6 +165,7 @@ class ImageGeneratorGUI:
                 self.output_text.insert(tk.END, f"Image file not found at path: {image_path}\n")
                 return
 
+        self.output_text.config(state="normal")
         self.output_text.delete("1.0", tk.END)
         self.output_text.insert(tk.END, f"Generating image with {model} model...\n")
         self.master.update_idletasks()
@@ -165,6 +175,7 @@ class ImageGeneratorGUI:
             output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
         except Exception as e:
             self.output_text.insert(tk.END, f"Error: {str(e)}\n")
+            self.output_text.config(state="disabled")
             return
         time_stop = perf_counter()
 
@@ -185,23 +196,18 @@ class ImageGeneratorGUI:
             self.output_text.insert(tk.END, f"Saved image: {file_name}\n")
 
         self.output_text.insert(tk.END, "Image generation complete!\n")
+        self.output_text.config(state="disabled")
 
     def setup_keyboard_shortcuts(self):
-        self.master.bind("<Tab>", self.focus_next_widget)
-        self.master.bind("<Shift-Tab>", self.focus_previous_widget)
+        self.master.bind("<Tab>", focus_next_widget)
+        self.master.bind("<Shift-Tab>", focus_previous_widget)
         self.master.bind("<Control-Return>", lambda event: self.generate_image())
         self.master.bind("<Command-Return>", lambda event: self.generate_image())
 
         self.prompt_text.bind("<Control-Return>", lambda event: self.generate_image())
         self.prompt_text.bind("<Command-Return>", lambda event: self.generate_image())
-
-    def focus_next_widget(self, event):
-        event.widget.tk_focusNext().focus()
-        return "break"
-
-    def focus_previous_widget(self, event):
-        event.widget.tk_focusPrev().focus()
-        return "break"
+        self.prompt_text.bind("<Tab>", focus_next_widget)
+        self.prompt_text.bind("<Shift-Tab>", focus_previous_widget)
 
 
 if __name__ == "__main__":
