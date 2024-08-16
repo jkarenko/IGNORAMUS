@@ -1,4 +1,5 @@
 import base64
+import datetime
 import os
 import tkinter as tk
 from time import perf_counter
@@ -10,6 +11,12 @@ import requests
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.output_text = None
+        self.generate_button = None
+        self.param_frame = None
+        self.prompt_text = None
+        self.model_combo = None
+        self.model_var = None
         self.master = master
         master.title("Image Generator GUI")
         master.geometry("600x700")
@@ -22,12 +29,14 @@ class ImageGeneratorGUI:
         }
 
         self.create_widgets()
+        self.setup_keyboard_shortcuts()
 
     def create_widgets(self):
         # Model selection
         ttk.Label(self.master, text="Select Model:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
         self.model_var = tk.StringVar(value="pro")
-        self.model_combo = ttk.Combobox(self.master, textvariable=self.model_var, values=["pro", "dev", "schnell"])
+        self.model_combo = ttk.Combobox(self.master, textvariable=self.model_var, values=["pro", "dev", "schnell"],
+                                        state="readonly")
         self.model_combo.grid(row=0, column=1, padx=10, pady=10, sticky="we")
         self.model_combo.bind("<<ComboboxSelected>>", self.update_parameter_fields)
 
@@ -96,7 +105,12 @@ class ImageGeneratorGUI:
         for param, var in self.common_vars.items():
             ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
                                                                                          pady=5, sticky="w")
-            ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
+            if param == "aspect_ratio":
+                ttk.Combobox(self.param_frame, textvariable=var,
+                             values=["16:9", "21:9", "1:1", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"],
+                             state="readonly").grid(row=row, column=1, padx=5, pady=5, sticky="we")
+            else:
+                ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
             row += 1
 
     def create_model_specific_fields(self, model):
@@ -104,18 +118,18 @@ class ImageGeneratorGUI:
         for param, var in self.model_specific_vars[model].items():
             if param == "image_path":
                 ttk.Label(self.param_frame, text="Image Path:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
-                ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                entry = ttk.Entry(self.param_frame, textvariable=var)
+                entry.grid(row=row, column=1, padx=5, pady=5, sticky="we")
                 ttk.Button(self.param_frame, text="Browse", command=self.browse_image).grid(row=row, column=2, padx=5,
                                                                                             pady=5)
             elif param == "disable_safety_checker":
-                ttk.Checkbutton(self.param_frame, text="Disable Safety Checker", variable=var).grid(row=row, column=0,
-                                                                                                    columnspan=2,
-                                                                                                    padx=5, pady=5,
-                                                                                                    sticky="w")
+                checkbutton = ttk.Checkbutton(self.param_frame, text="Disable Safety Checker", variable=var)
+                checkbutton.grid(row=row, column=0, columnspan=2, padx=5, pady=5, sticky="w")
             else:
                 ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
                                                                                              pady=5, sticky="w")
-                ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                entry = ttk.Entry(self.param_frame, textvariable=var)
+                entry.grid(row=row, column=1, padx=5, pady=5, sticky="we")
             row += 1
 
     def browse_image(self):
@@ -162,14 +176,32 @@ class ImageGeneratorGUI:
         if isinstance(output, str):
             output = [output]
 
+        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         for idx, url in enumerate(output):
             response = requests.get(url)
-            file_name = f"results/img_{time_start}{"_" + idx if len(output) > 1 else ""}.jpg"
+            file_name = f"results/img_{current_time}{'_' + str(idx) if len(output) > 1 else ''}.jpg"
             with open(file_name, "wb") as file:
                 file.write(response.content)
             self.output_text.insert(tk.END, f"Saved image: {file_name}\n")
 
         self.output_text.insert(tk.END, "Image generation complete!\n")
+
+    def setup_keyboard_shortcuts(self):
+        self.master.bind("<Tab>", self.focus_next_widget)
+        self.master.bind("<Shift-Tab>", self.focus_previous_widget)
+        self.master.bind("<Control-Return>", lambda event: self.generate_image())
+        self.master.bind("<Command-Return>", lambda event: self.generate_image())
+
+        self.prompt_text.bind("<Control-Return>", lambda event: self.generate_image())
+        self.prompt_text.bind("<Command-Return>", lambda event: self.generate_image())
+
+    def focus_next_widget(self, event):
+        event.widget.tk_focusNext().focus()
+        return "break"
+
+    def focus_previous_widget(self, event):
+        event.widget.tk_focusPrev().focus()
+        return "break"
 
 
 if __name__ == "__main__":
