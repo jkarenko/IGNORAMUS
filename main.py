@@ -164,7 +164,9 @@ class ImageGeneratorGUI:
                     encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
                 properties["image"] = f"data:image/png;base64,{encoded_string}"
             except FileNotFoundError:
+                self.output_text.config(state="normal")
                 self.output_text.insert(tk.END, f"Image file not found at path: {image_path}\n")
+                self.output_text.config(state="disabled")
                 return
 
         self.output_text.config(state="normal")
@@ -172,6 +174,10 @@ class ImageGeneratorGUI:
         self.output_text.insert(tk.END, f"Generating image with {model} model...\n")
         self.master.update_idletasks()
 
+        # Schedule the long-running task
+        self.master.after(100, self._generate_image_task, model, properties)
+
+    def _generate_image_task(self, model, properties):
         time_start = perf_counter()
         try:
             output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
