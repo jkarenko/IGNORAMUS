@@ -21,6 +21,7 @@ def focus_next_widget(event):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.default_values = None
         self.output_text = None
         self.generate_button = None
         self.param_frame = None
@@ -84,12 +85,12 @@ class ImageGeneratorGUI:
             },
             "dev": {
                 "image_path": tk.StringVar(),
-                "guidance": tk.DoubleVar(value=3.0),
-                "num_outputs": tk.IntVar(value=4),
+                "guidance": tk.DoubleVar(value=3.5),
+                "num_outputs": tk.IntVar(value=1),
                 "output_format": tk.StringVar(value="jpg"),
-                "output_quality": tk.IntVar(value=90),
-                "prompt_strength": tk.DoubleVar(value=0.3),
-                "num_inference_steps": tk.IntVar(value=25),
+                "output_quality": tk.IntVar(value=80),
+                "prompt_strength": tk.DoubleVar(value=0.8),
+                "num_inference_steps": tk.IntVar(value=50),
                 "disable_safety_checker": tk.BooleanVar(value=True),
             },
             "schnell": {
@@ -98,6 +99,14 @@ class ImageGeneratorGUI:
                 "output_quality": tk.IntVar(value=90),
                 "disable_safety_checker": tk.BooleanVar(value=True),
             }
+        }
+
+        self.default_values = {
+            "guidance": 3.5,
+            "num_outputs": 1,
+            "output_quality": 80,
+            "prompt_strength": 0.8,
+            "num_inference_steps": 50,
         }
 
     def update_parameter_fields(self, event=None):
@@ -136,8 +145,55 @@ class ImageGeneratorGUI:
             else:
                 ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
                                                                                              pady=5, sticky="w")
-                entry = ttk.Entry(self.param_frame, textvariable=var)
-                entry.grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                if param in ["guidance", "num_outputs", "output_quality", "prompt_strength", "num_inference_steps"]:
+                    slider_frame = ttk.Frame(self.param_frame)
+                    slider_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
+
+                    if param == "guidance":
+                        min_val, max_val, step = 0, 10, 0.1
+                    elif param == "num_outputs":
+                        min_val, max_val, step = 1, 4, 1
+                    elif param == "output_quality":
+                        min_val, max_val, step = 0, 100, 1
+                    elif param == "prompt_strength":
+                        min_val, max_val, step = 0, 1, 0.01
+                    elif param == "num_inference_steps":
+                        min_val, max_val, step = 1, 50, 1
+
+                    style = ttk.Style()
+                    style.configure("Grey.TLabel", foreground="grey")
+
+                    min_label = ttk.Label(slider_frame, text=f"{min_val}", style="Grey.TLabel")
+                    min_label.grid(row=0, column=0, padx=(0, 5))
+                    max_label = ttk.Label(slider_frame, text=f"{max_val}", style="Grey.TLabel")
+                    max_label.grid(row=0, column=2, padx=(5, 0))
+                    value_label = ttk.Label(slider_frame, text=f"{var.get():.2f}")
+                    value_label.grid(row=0, column=3, padx=(10, 0))
+
+                    def update_value(value, label=value_label, var=var):
+                        snapped_value = round(float(value) / step) * step
+                        var.set(snapped_value)
+                        label.config(text=f"{snapped_value:.2f}")
+                        return snapped_value
+
+                    slider = ttk.Scale(
+                        slider_frame,
+                        from_=min_val,
+                        to=max_val,
+                        orient=tk.HORIZONTAL,
+                        command=lambda v, l=value_label, var=var: update_value(v, l, var)
+                    )
+                    slider.grid(row=0, column=1, padx=5)
+                    slider.set(update_value(var.get(), value_label, var))  # Set initial value
+
+                    def reset_slider(event, s=slider, l=value_label, v=var):
+                        default_value = self.default_values[param]
+                        s.set(update_value(default_value, l, v))
+
+                    value_label.bind("<Button-1>", reset_slider)
+                else:
+                    entry = ttk.Entry(self.param_frame, textvariable=var)
+                    entry.grid(row=row, column=1, padx=5, pady=5, sticky="we")
             row += 1
 
     def browse_image(self):
