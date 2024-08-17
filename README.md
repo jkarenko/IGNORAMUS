@@ -4,6 +4,9 @@
 
 A Python-based graphical user interface for generating bizarre and unique images using Flux models.
 
+![img.png](img.png)
+![img_1.png](img_1.png)
+
 ## Features
 
 - Customizable parameters for each Flux model
