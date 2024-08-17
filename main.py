@@ -4,6 +4,7 @@ import os
 import tkinter as tk
 from time import perf_counter
 from tkinter import ttk, filedialog
+import random
 
 import replicate
 import requests
@@ -76,6 +77,8 @@ class ImageGeneratorGUI:
     def initialize_variables(self):
         self.common_vars = {
             "aspect_ratio": tk.StringVar(value="16:9"),
+            "seed": tk.IntVar(value=random.randint(0, 2 ** 32 - 1)),
+            "randomize_seed": tk.BooleanVar(value=True)
         }
 
         self.model_specific_vars = {
@@ -156,12 +159,25 @@ class ImageGeneratorGUI:
     def create_common_fields(self):
         row = 0
         for param, var in self.common_vars.items():
+            if param == "randomize_seed":
+                continue
             ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
                                                                                          pady=5, sticky="w")
             if param == "aspect_ratio":
                 ttk.Combobox(self.param_frame, textvariable=var,
                              values=["16:9", "21:9", "1:1", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"],
                              state="readonly").grid(row=row, column=1, padx=5, pady=5, sticky="we")
+            elif param == "seed":
+                seed_frame = ttk.Frame(self.param_frame)
+                seed_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
+
+                seed_entry = ttk.Entry(seed_frame, textvariable=var)
+                seed_entry.grid(row=0, column=0, sticky="we")
+                seed_frame.columnconfigure(0, weight=1)
+
+                randomize_check = ttk.Checkbutton(seed_frame, text="Randomize",
+                                                  variable=self.common_vars["randomize_seed"])
+                randomize_check.grid(row=0, column=1, padx=(5, 0))
             else:
                 ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
             row += 1
@@ -169,7 +185,6 @@ class ImageGeneratorGUI:
     def create_model_specific_fields(self, model: str) -> None:
         row = len(self.common_vars)
         for param, var in self.model_specific_vars[model].items():
-            # print(f"Creating field for parameter: {param}")
             if param == "image_path":
                 ttk.Label(self.param_frame, text="Image Path:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
                 entry = ttk.Entry(self.param_frame, textvariable=var)
@@ -220,15 +235,8 @@ class ImageGeneratorGUI:
                             min_val, max_val, step = 0, 100, 1
 
                     style = ttk.Style()
-                    # style.configure("Grey.TLabel", foreground="#A9A9A9")
                     style.configure("Value.TLabel", anchor="e", width=6)
-                    #
-                    # min_label = ttk.Label(slider_frame, text=f"{min_val:.0f}", style="Grey.TLabel")
-                    # min_label.grid(row=0, column=0, padx=(0, 5))
-                    # max_label = ttk.Label(slider_frame, text=f"{max_val:.0f}", style="Grey.TLabel")
-                    # max_label.grid(row=0, column=2, padx=(5, 0))
 
-                    # Determine the format string based on the step size
                     format_string = ".2f" if step < 0.1 else (".1f" if step < 1 else "d")
                     value_label = ttk.Label(slider_frame, text=f"{var.get():{format_string}}", style="Value.TLabel")
                     value_label.grid(row=0, column=3, padx=(5, 0))
@@ -239,10 +247,8 @@ class ImageGeneratorGUI:
                         step_value = self.step_values[model].get(param_name, 1)
                         if step_value >= 1:
                             snapped_value = round(float_value)
-                            # print(f"step_value >= 1 {snapped_value=}")
                         else:
                             snapped_value = round(float_value / step_value) * step_value
-                            # print(f"step_value < 1 {snapped_value=}")
                         format_string = ".2f" if step_value < 0.1 else (".1f" if step_value < 1 else "d")
                         var.set(snapped_value)
                         label.config(text=f"{snapped_value:{format_string}}")
@@ -264,7 +270,7 @@ class ImageGeneratorGUI:
 
                     def reset_slider(event, s=slider, l=value_label, v=var, m=model, p=param):
                         default_value = self.default_values[m].get(p, v.get())
-                        s.set(update_value(default_value, l, v))
+                        s.set(update_value(default_value, l, v, p))
 
                     value_label.bind("<Button-1>", reset_slider)
                 else:
@@ -283,9 +289,13 @@ class ImageGeneratorGUI:
         model = self.model_var.get()
         prompt_text = self.prompt_text.get("1.0", tk.END).strip()
 
+        if self.common_vars["randomize_seed"].get():
+            self.common_vars["seed"].set(random.randint(0, 2 ** 32 - 1))
+
         properties = {
             "prompt": prompt_text,
-            **{k: v.get() for k, v in self.common_vars.items()},
+            "seed": self.common_vars["seed"].get(),
+            **{k: v.get() for k, v in self.common_vars.items() if k not in ["seed", "randomize_seed"]},
             **{k: v.get() for k, v in self.model_specific_vars[model].items() if k != "image_path"}
         }
 
@@ -304,6 +314,13 @@ class ImageGeneratorGUI:
         self.output_text.config(state="normal")
         self.output_text.delete("1.0", tk.END)
         self.output_text.insert(tk.END, f"Generating image with {model} model...\n")
+        self.output_text.insert(tk.END, "Properties:\n")
+        for key, value in properties.items():
+            if key == "image":
+                self.output_text.insert(tk.END, f"  {key}: [base64 encoded image]\n")
+            else:
+                self.output_text.insert(tk.END, f"  {key}: {value}\n")
+        self.output_text.insert(tk.END, "\n")
         self.master.update_idletasks()
 
         # Schedule the long-running task
@@ -311,8 +328,16 @@ class ImageGeneratorGUI:
 
     def _generate_image_task(self, model, properties):
         time_start = perf_counter()
+
+        # self.output_text.insert(tk.END, "Sending to API:\n")
+        # self.output_text.insert(tk.END, f"{properties}\n\n")
+        # self.master.update_idletasks()
+
         try:
             output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
+
+            # self.output_text.insert(tk.END, "Raw API output:\n")
+            # self.output_text.insert(tk.END, f"{output}\n\n")
         except Exception as e:
             self.output_text.insert(tk.END, f"Error: {str(e)}\n")
             self.output_text.config(state="disabled")
@@ -330,7 +355,7 @@ class ImageGeneratorGUI:
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         for idx, url in enumerate(output):
             response = requests.get(url)
-            file_name = f"results/img_{current_time}{'_' + str(idx) if len(output) > 1 else ''}.jpg"
+            file_name = f"results/img_{current_time}{f'_{str(idx)}' if len(output) > 1 else ''}.jpg"
             with open(file_name, "wb") as file:
                 file.write(response.content)
             self.output_text.insert(tk.END, f"Saved image: {file_name}\n")
@@ -344,8 +369,6 @@ class ImageGeneratorGUI:
         self.master.bind("<Control-Return>", lambda event: self.generate_image())
         self.master.bind("<Command-Return>", lambda event: self.generate_image())
 
-        self.prompt_text.bind("<Control-Return>", lambda event: self.generate_image())
-        self.prompt_text.bind("<Command-Return>", lambda event: self.generate_image())
         self.prompt_text.bind("<Tab>", focus_next_widget)
         self.prompt_text.bind("<Shift-Tab>", focus_previous_widget)
 
