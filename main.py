@@ -2,9 +2,9 @@ import base64
 import datetime
 import json
 import os
-import subprocess
 import platform
 import random
+import subprocess
 import tkinter as tk
 from time import perf_counter
 from tkinter import ttk, filedialog
@@ -614,7 +614,6 @@ class ImageGeneratorGUI:
                                             command=lambda: self.set_widgets_and_close(metadata, top))
             set_widgets_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
-
         # Bind click event to close the window
         canvas.bind("<Button-1>", lambda e: top.destroy())
 
@@ -655,7 +654,23 @@ class ImageGeneratorGUI:
         self.master.update_idletasks()
 
 
+def initialize_app():
+    # if 'REPLICATE_API_TOKEN' in os.environ:
+    #     return
+
+    token_file = 'token.txt'
+    if os.path.exists(token_file):
+        with open(token_file, 'r') as file:
+            api_token = file.read().strip()
+        os.environ['REPLICATE_API_TOKEN'] = api_token
+        print("Replicate API token loaded from token.txt and set in environment variables.")
+    else:
+        print(
+            f"ERROR: REPLICATE_API_TOKEN not set and {token_file} not found. Please set the environment variable or create {token_file} with your Replicate API token.")
+
+
 if __name__ == "__main__":
+    initialize_app()
     root = tk.Tk()
     gui = ImageGeneratorGUI(root)
     root.mainloop()
