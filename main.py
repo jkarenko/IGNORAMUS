@@ -7,11 +7,11 @@ import tkinter as tk
 from time import perf_counter
 from tkinter import ttk, filedialog
 
+import piexif
+import piexif.helper
 import replicate
 import requests
 from PIL import Image, ImageTk
-import piexif
-import piexif.helper
 
 
 def focus_previous_widget(event):
@@ -360,11 +360,6 @@ class ImageGeneratorGUI:
         # Schedule the long-running task
         self.master.after(100, lambda: self._generate_image_task(model, properties))
 
-    import json
-    from PIL import Image
-    from PIL.ExifTags import TAGS
-    from piexif import dump, load
-
     def _generate_image_task(self, model, properties):
         time_start = perf_counter()
 
@@ -422,6 +417,7 @@ class ImageGeneratorGUI:
 
         # Update the gallery after image generation is complete
         self.master.after(0, self.load_images_from_results)
+
     def setup_keyboard_shortcuts(self):
         self.master.bind("<Tab>", focus_next_widget)
         self.master.bind("<Shift-Tab>", focus_previous_widget)
