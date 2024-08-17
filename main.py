@@ -21,6 +21,7 @@ def focus_next_widget(event):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.step_values = None
         self.default_values = None
         self.default_values_dev = None
         self.output_text = None
@@ -74,7 +75,7 @@ class ImageGeneratorGUI:
 
     def initialize_variables(self):
         self.common_vars = {
-            "aspect_ratio": tk.StringVar(value="1:1"),
+            "aspect_ratio": tk.StringVar(value="16:9"),
         }
 
         self.model_specific_vars = {
@@ -124,6 +125,26 @@ class ImageGeneratorGUI:
             }
         }
 
+        self.step_values = {
+            "pro": {
+                "guidance": 0.1,
+                "steps": 1,
+                "interval": 0.1,
+                "safety_tolerance": 1,
+            },
+            "dev": {
+                "guidance": 0.1,
+                "num_outputs": 1,
+                "output_quality": 1,
+                "prompt_strength": 0.01,
+                "num_inference_steps": 1,
+            },
+            "schnell": {
+                "num_outputs": 1,
+                "output_quality": 1,
+            }
+        }
+
     def update_parameter_fields(self, event=None):
         for widget in self.param_frame.winfo_children():
             widget.destroy()
@@ -148,6 +169,7 @@ class ImageGeneratorGUI:
     def create_model_specific_fields(self, model: str) -> None:
         row = len(self.common_vars)
         for param, var in self.model_specific_vars[model].items():
+            print(f"Creating field for parameter: {param}")
             if param == "image_path":
                 ttk.Label(self.param_frame, text="Image Path:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
                 entry = ttk.Entry(self.param_frame, textvariable=var)
@@ -198,42 +220,47 @@ class ImageGeneratorGUI:
                             min_val, max_val, step = 0, 100, 1
 
                     style = ttk.Style()
-                    style.configure("Grey.TLabel", foreground="#A9A9A9")
+                    # style.configure("Grey.TLabel", foreground="#A9A9A9")
                     style.configure("Value.TLabel", anchor="e", width=6)
-
-                    min_label = ttk.Label(slider_frame, text=f"{min_val:.2f}", style="Grey.TLabel Value.TLabel")
-                    min_label.grid(row=0, column=0, padx=(0, 5))
-                    max_label = ttk.Label(slider_frame, text=f"{max_val:.2f}", style="Grey.TLabel Value.TLabel")
-                    max_label.grid(row=0, column=2, padx=(5, 0))
+                    #
+                    # min_label = ttk.Label(slider_frame, text=f"{min_val:.0f}", style="Grey.TLabel")
+                    # min_label.grid(row=0, column=0, padx=(0, 5))
+                    # max_label = ttk.Label(slider_frame, text=f"{max_val:.0f}", style="Grey.TLabel")
+                    # max_label.grid(row=0, column=2, padx=(5, 0))
 
                     # Determine the format string based on the step size
                     format_string = ".2f" if step < 0.1 else (".1f" if step < 1 else "d")
                     value_label = ttk.Label(slider_frame, text=f"{var.get():{format_string}}", style="Value.TLabel")
                     value_label.grid(row=0, column=3, padx=(5, 0))
 
-                    def update_value(value, label=value_label, var=var):
+                    def update_value(value, label, var, param_name):
                         float_value = float(value)
-                        if step >= 1:
+                        model = self.model_var.get()
+                        step_value = self.step_values[model].get(param_name, 1)
+                        if step_value >= 1:
                             snapped_value = round(float_value)
+                            print(f"step_value >= 1 {snapped_value=}")
                         else:
-                            snapped_value = round(float_value / step) * step
+                            snapped_value = round(float_value / step_value) * step_value
+                            print(f"step_value < 1 {snapped_value=}")
+                        format_string = ".2f" if step_value < 0.1 else (".1f" if step_value < 1 else "d")
                         var.set(snapped_value)
                         label.config(text=f"{snapped_value:{format_string}}")
                         return snapped_value
 
-                    def create_update_function(label, var):
-                        return lambda value: update_value(value, label, var)
+                    def create_update_function(label, var, param_name):
+                        return lambda value: update_value(value, label, var, param_name)
 
                     slider = ttk.Scale(
                         slider_frame,
                         from_=min_val,
                         to=max_val,
                         orient=tk.HORIZONTAL,
-                        command=create_update_function(value_label, var)
+                        command=create_update_function(value_label, var, param)
                     )
                     slider.grid(row=0, column=1, padx=5, sticky="we")
                     slider_frame.columnconfigure(1, weight=1)  # Make the slider expandable
-                    slider.set(update_value(var.get(), value_label, var))  # Set initial value
+                    slider.set(update_value(var.get(), value_label, var, param))  # Set initial value
 
                     def reset_slider(event, s=slider, l=value_label, v=var, m=model, p=param):
                         default_value = self.default_values[m].get(p, v.get())
