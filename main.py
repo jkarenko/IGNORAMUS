@@ -10,7 +10,6 @@ from tkinter import ttk, filedialog
 import replicate
 import requests
 from PIL import Image, ImageTk
-from PIL.ExifTags import TAGS
 import piexif
 import piexif.helper
 
