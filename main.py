@@ -21,6 +21,7 @@ def focus_next_widget(event):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.default_values = None
         self.default_values_dev = None
         self.output_text = None
         self.generate_button = None
@@ -87,17 +88,17 @@ class ImageGeneratorGUI:
                 "image_path": tk.StringVar(),
                 "guidance": tk.DoubleVar(value=3.5),
                 "num_outputs": tk.IntVar(value=1),
-                "output_format": tk.StringVar(value="webp"),
+                "output_format": tk.StringVar(value="jpg"),
                 "output_quality": tk.IntVar(value=80),
                 "prompt_strength": tk.DoubleVar(value=0.8),
                 "num_inference_steps": tk.IntVar(value=50),
-                "disable_safety_checker": tk.BooleanVar(value=False),
+                "disable_safety_checker": tk.BooleanVar(value=True),
             },
             "schnell": {
                 "num_outputs": tk.IntVar(value=1),
-                "output_format": tk.StringVar(value="webp"),
+                "output_format": tk.StringVar(value="jpg"),
                 "output_quality": tk.IntVar(value=80),
-                "disable_safety_checker": tk.BooleanVar(value=False),
+                "disable_safety_checker": tk.BooleanVar(value=True),
             }
         }
 
@@ -114,12 +115,12 @@ class ImageGeneratorGUI:
                 "output_quality": 80,
                 "prompt_strength": 0.8,
                 "num_inference_steps": 50,
-                "output_format": "webp",
+                "output_format": "jpg",
             },
             "schnell": {
                 "num_outputs": 1,
                 "output_quality": 80,
-                "output_format": "webp",
+                "output_format": "jpg",
             }
         }
 
