@@ -130,37 +130,12 @@ class ImageGeneratorGUI:
             "randomize_seed": tk.BooleanVar(value=True)
         }
 
-        self.model_specific_vars = {
-            "pro": {
-                "steps": tk.IntVar(value=25),
-                "guidance": tk.DoubleVar(value=3.0),
-                "interval": tk.DoubleVar(value=2.0),
-                "safety_tolerance": tk.IntVar(value=2),
-            },
-            "dev": {
-                "image_path": tk.StringVar(),
-                "guidance": tk.DoubleVar(value=3.5),
-                "num_outputs": tk.IntVar(value=1),
-                "output_format": tk.StringVar(value="jpg"),
-                "output_quality": tk.IntVar(value=80),
-                "prompt_strength": tk.DoubleVar(value=0.8),
-                "num_inference_steps": tk.IntVar(value=50),
-                "disable_safety_checker": tk.BooleanVar(value=True),
-            },
-            "schnell": {
-                "num_outputs": tk.IntVar(value=1),
-                "output_format": tk.StringVar(value="jpg"),
-                "output_quality": tk.IntVar(value=80),
-                "disable_safety_checker": tk.BooleanVar(value=True),
-            }
-        }
-
         self.default_values = {
             "pro": {
                 "steps": 25,
                 "guidance": 3.0,
                 "interval": 2.0,
-                "safety_tolerance": 2,
+                "safety_tolerance": 5,
             },
             "dev": {
                 "guidance": 3.5,
@@ -169,11 +144,38 @@ class ImageGeneratorGUI:
                 "prompt_strength": 0.8,
                 "num_inference_steps": 50,
                 "output_format": "jpg",
+                "disable_safety_checker": True,
             },
             "schnell": {
                 "num_outputs": 1,
                 "output_quality": 80,
                 "output_format": "jpg",
+                "disable_safety_checker": True,
+            }
+        }
+
+        self.model_specific_vars = {
+            "pro": {
+                "steps": tk.IntVar(value=self.default_values["pro"]["steps"]),
+                "guidance": tk.DoubleVar(value=self.default_values["pro"]["guidance"]),
+                "interval": tk.DoubleVar(value=self.default_values["pro"]["interval"]),
+                "safety_tolerance": tk.IntVar(value=self.default_values["pro"]["safety_tolerance"]),
+            },
+            "dev": {
+                "image_path": tk.StringVar(),
+                "guidance": tk.DoubleVar(value=self.default_values["dev"]["guidance"]),
+                "num_outputs": tk.IntVar(value=self.default_values["dev"]["num_outputs"]),
+                "output_format": tk.StringVar(value=self.default_values["dev"]["output_format"]),
+                "output_quality": tk.IntVar(value=self.default_values["dev"]["output_quality"]),
+                "prompt_strength": tk.DoubleVar(value=self.default_values["dev"]["prompt_strength"]),
+                "num_inference_steps": tk.IntVar(value=self.default_values["dev"]["num_inference_steps"]),
+                "disable_safety_checker": tk.BooleanVar(value=self.default_values["dev"]["disable_safety_checker"]),
+            },
+            "schnell": {
+                "num_outputs": tk.IntVar(value=self.default_values["schnell"]["num_outputs"]),
+                "output_format": tk.StringVar(value=self.default_values["schnell"]["output_format"]),
+                "output_quality": tk.IntVar(value=self.default_values["schnell"]["output_quality"]),
+                "disable_safety_checker": tk.BooleanVar(value=self.default_values["schnell"]["disable_safety_checker"]),
             }
         }
 
