@@ -2,7 +2,7 @@
 
 **I**mage **G**enerator: **N**onsense, **O**ddities, **R**andom **A**rt, and **M**ost **U**nusual **S**cenes
 
-A Python-based graphical user interface for generating bizarre and unique images using Flux models.
+A Python-based graphical user interface for generating images using Flux models.
 
 ![img.png](img.png)
 ![img_1.png](img_1.png)
