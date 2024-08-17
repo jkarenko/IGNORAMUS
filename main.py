@@ -169,7 +169,7 @@ class ImageGeneratorGUI:
     def create_model_specific_fields(self, model: str) -> None:
         row = len(self.common_vars)
         for param, var in self.model_specific_vars[model].items():
-            print(f"Creating field for parameter: {param}")
+            # print(f"Creating field for parameter: {param}")
             if param == "image_path":
                 ttk.Label(self.param_frame, text="Image Path:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
                 entry = ttk.Entry(self.param_frame, textvariable=var)
@@ -239,10 +239,10 @@ class ImageGeneratorGUI:
                         step_value = self.step_values[model].get(param_name, 1)
                         if step_value >= 1:
                             snapped_value = round(float_value)
-                            print(f"step_value >= 1 {snapped_value=}")
+                            # print(f"step_value >= 1 {snapped_value=}")
                         else:
                             snapped_value = round(float_value / step_value) * step_value
-                            print(f"step_value < 1 {snapped_value=}")
+                            # print(f"step_value < 1 {snapped_value=}")
                         format_string = ".2f" if step_value < 0.1 else (".1f" if step_value < 1 else "d")
                         var.set(snapped_value)
                         label.config(text=f"{snapped_value:{format_string}}")
