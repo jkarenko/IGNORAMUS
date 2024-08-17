@@ -2,6 +2,8 @@ import base64
 import datetime
 import json
 import os
+import subprocess
+import platform
 import random
 import tkinter as tk
 from time import perf_counter
@@ -32,6 +34,19 @@ def read_image_metadata(file_path):
         return json.loads(metadata)
     except (KeyError, json.JSONDecodeError):
         return None
+
+
+def open_file_location(file_path):
+    # Get the directory of the file
+    dir_path = os.path.dirname(os.path.abspath(file_path))
+
+    # Open the directory in the file explorer based on the OS
+    if platform.system() == "Windows":
+        os.startfile(dir_path)
+    elif platform.system() == "Darwin":  # macOS
+        subprocess.Popen(["open", dir_path])
+    else:  # Linux and other Unix-like
+        subprocess.Popen(["xdg-open", dir_path])
 
 
 class ImageGeneratorGUI:
@@ -577,7 +592,7 @@ class ImageGeneratorGUI:
         # Read metadata from EXIF
         metadata = read_image_metadata(img_path)
         if metadata:
-            # Create a frame to hold the text widget and button
+            # Create a frame to hold the text widget and buttons
             frame = ttk.Frame(top)
             frame.pack(fill=tk.X, expand=False)
 
@@ -587,14 +602,27 @@ class ImageGeneratorGUI:
             text_widget.insert(tk.END, json.dumps(metadata, indent=2))
             text_widget.config(state=tk.DISABLED)  # Make it read-only
 
+            # Create a button to open image location
+            open_location_button = ttk.Button(frame, text="Open Location",
+                                              command=lambda: open_file_location(img_path))
+            open_location_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
             # Create a button to set widgets according to EXIF data
             set_widgets_button = ttk.Button(frame, text="Set Widgets",
-                                            command=lambda: self.set_widgets_from_metadata(metadata))
+                                            command=lambda: self.set_widgets_and_close(metadata, top))
             set_widgets_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
+
+        # Bind click event to close the window
+        canvas.bind("<Button-1>", lambda e: top.destroy())
 
         # Initial resize
         top.update_idletasks()  # Ensure the window size is updated
         top.after(100, resize_image)  # Schedule the initial resize after a short delay
+
+    def set_widgets_and_close(self, metadata, window):
+        self.set_widgets_from_metadata(metadata)
+        window.destroy()
 
     def set_widgets_from_metadata(self, metadata):
         # Set model
