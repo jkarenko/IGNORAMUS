@@ -53,6 +53,7 @@ def open_file_location(file_path):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.full_size_image = None
         self.gallery_tab = None
         self.gallery_notebook = None
         self.on_frame_configure = None
@@ -332,10 +333,9 @@ class ImageGeneratorGUI:
             row += 1
 
     def browse_image(self):
-        filename = tk.filedialog.askopenfilename(
+        if filename := tk.filedialog.askopenfilename(
             filetypes=[("Image files", "*.jpg *.jpeg *.png *.webm")]
-        )
-        if filename:
+        ):
             self.model_specific_vars["dev"]["image_path"].set(filename)
 
     def generate_image(self):
@@ -658,7 +658,6 @@ class ImageGeneratorGUI:
                 os.remove(img_path)
                 window.destroy()
                 self.load_images_from_results()  # Refresh the gallery
-                tk.messagebox.showinfo("Success", "Image deleted successfully.")
             except Exception as e:
                 tk.messagebox.showerror("Error", f"Failed to delete image: {str(e)}")
 
