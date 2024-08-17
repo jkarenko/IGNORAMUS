@@ -415,16 +415,37 @@ class ImageGeneratorGUI:
         self.gallery_images_frame.bind("<Configure>", self.on_frame_configure)
 
         # Bind mousewheel event to the canvas
-        self.gallery_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.gallery_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.gallery_canvas.bind("<Enter>", self._bound_to_mousewheel)
+        self.gallery_canvas.bind("<Leave>", self._unbound_to_mousewheel)
 
         # Load initial images
         self.load_images_from_results()
 
+    def _on_mousewheel(self, event):
+        if event.num == 4 or event.delta > 0:
+            self.gallery_canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.gallery_canvas.yview_scroll(1, "units")
+
+    def _bind_mousewheel(self, widget):
+        # Bind mousewheel event to the widget
+        widget.bind("<MouseWheel>", self._on_mousewheel)
+        widget.bind("<Button-4>", self._on_mousewheel)
+        widget.bind("<Button-5>", self._on_mousewheel)
+
+    def _bound_to_mousewheel(self, event):
+        self.gallery_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.gallery_canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self.gallery_canvas.bind_all("<Button-5>", self._on_mousewheel)
+
+    def _unbound_to_mousewheel(self, event):
+        self.gallery_canvas.unbind_all("<MouseWheel>")
+        self.gallery_canvas.unbind_all("<Button-4>")
+        self.gallery_canvas.unbind_all("<Button-5>")
+
     def on_frame_configure(self, event):
         self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
-
-    def _on_mousewheel(self, event):
-        self.gallery_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def load_images_from_results(self):
         results_folder = "results"
@@ -467,6 +488,9 @@ class ImageGeneratorGUI:
 
         # Bind click event to open full-size image
         label.bind("<Button-1>", lambda e, path=img_path: self.open_full_size_image(path))
+
+        # Bind mousewheel event to the label
+        self._bind_mousewheel(label)
 
     def open_full_size_image(self, img_path):
         # Open the full-size image in a new window
