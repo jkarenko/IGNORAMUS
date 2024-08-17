@@ -54,7 +54,7 @@ class ImageGeneratorGUI:
         self.model_var = None
         self.master = master
         master.title("Image Generator GUI")
-        master.geometry("1200x700")
+        master.geometry("1200x900")
 
         self.common_vars = {}
         self.model_specific_vars = {
@@ -391,6 +391,7 @@ class ImageGeneratorGUI:
             # Open the image with Pillow
             img = Image.open(file_name)
 
+            properties["model"] = model
             # Convert properties to a JSON string
             metadata = json.dumps(properties)
 
