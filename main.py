@@ -39,7 +39,7 @@ class ImageGeneratorGUI:
         self.model_var = None
         self.master = master
         master.title("Image Generator GUI")
-        master.geometry("600x700")
+        master.geometry("900x700")
 
         self.common_vars = {}
         self.model_specific_vars = {
@@ -53,36 +53,45 @@ class ImageGeneratorGUI:
         self.create_gallery()
 
     def create_widgets(self):
+        # Create a main frame to hold everything
+        main_frame = ttk.Frame(self.master)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Create left frame for controls
+        left_frame = ttk.Frame(main_frame, width=600)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         # Model selection
-        ttk.Label(self.master, text="Select Model:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(left_frame, text="Select Model:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
         self.model_var = tk.StringVar(value="pro")
-        self.model_combo = ttk.Combobox(self.master, textvariable=self.model_var, values=["pro", "dev", "schnell"],
+        self.model_combo = ttk.Combobox(left_frame, textvariable=self.model_var, values=["pro", "dev", "schnell"],
                                         state="readonly")
         self.model_combo.grid(row=0, column=1, padx=10, pady=10, sticky="we")
         self.model_combo.bind("<<ComboboxSelected>>", self.update_parameter_fields)
 
         # Common parameters
-        ttk.Label(self.master, text="Prompt:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
-        self.prompt_text = tk.Text(self.master, height=4, width=50)
+        ttk.Label(left_frame, text="Prompt:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        self.prompt_text = tk.Text(left_frame, height=4, width=50)
         self.prompt_text.grid(row=1, column=1, padx=10, pady=10, sticky="we")
 
         # Model-specific parameters
-        self.param_frame = ttk.Frame(self.master)
+        self.param_frame = ttk.Frame(left_frame)
         self.param_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="we")
 
         # Generate button
-        self.generate_button = ttk.Button(self.master, text="Generate Image", command=self.generate_image)
+        self.generate_button = ttk.Button(left_frame, text="Generate Image", command=self.generate_image)
         self.generate_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
 
         # Output
-        self.output_text = tk.Text(self.master, height=10, width=70, state="disabled")
+        self.output_text = tk.Text(left_frame, height=10, width=70, state="disabled")
         self.output_text.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
 
         self.initialize_variables()
         self.update_parameter_fields()
 
-        self.gallery_frame = ttk.Frame(self.master)
-        self.gallery_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="we")
+        # Create right frame for gallery
+        self.gallery_frame = ttk.Frame(main_frame, width=300)
+        self.gallery_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
     def initialize_variables(self):
         self.common_vars = {
@@ -384,25 +393,37 @@ class ImageGeneratorGUI:
         self.prompt_text.bind("<Shift-Tab>", focus_previous_widget)
 
     def create_gallery(self):
-        # Create a canvas for the gallery
-        self.gallery_canvas = tk.Canvas(self.gallery_frame, height=100)
-        self.gallery_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        # Create a notebook widget
+        self.gallery_notebook = ttk.Notebook(self.gallery_frame)
+        self.gallery_notebook.pack(fill=tk.BOTH, expand=True)
 
-        # Add a horizontal scrollbar
-        self.gallery_scrollbar = ttk.Scrollbar(self.gallery_frame, orient=tk.HORIZONTAL,
-                                               command=self.gallery_canvas.xview)
-        self.gallery_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-        self.gallery_canvas.configure(xscrollcommand=self.gallery_scrollbar.set)
+        # Create a frame for the gallery inside the notebook
+        self.gallery_tab = ttk.Frame(self.gallery_notebook)
+        self.gallery_notebook.add(self.gallery_tab, text="Gallery")
+
+        # Create a canvas for the gallery (this will make it scrollable)
+        self.gallery_canvas = tk.Canvas(self.gallery_tab)
+        self.gallery_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Add a vertical scrollbar
+        self.gallery_scrollbar = ttk.Scrollbar(self.gallery_tab, orient="vertical",
+                                               command=self.gallery_canvas.yview)
+        self.gallery_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.gallery_canvas.configure(yscrollcommand=self.gallery_scrollbar.set)
 
         # Create a frame inside the canvas to hold the images
         self.gallery_images_frame = ttk.Frame(self.gallery_canvas)
         self.gallery_canvas.create_window((0, 0), window=self.gallery_images_frame, anchor=tk.NW)
 
-        # Bind the configure event to update the scroll region
+        # Configure the canvas to update its scroll region when the size of the frame changes
         self.gallery_images_frame.bind("<Configure>", self.on_frame_configure)
 
         # Load initial images
         self.load_images_from_results()
+
+    def on_frame_configure(self, event):
+        # Update the scroll region to encompass the inner frame
+        self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
 
     def load_images_from_results(self):
         results_folder = "results"
@@ -420,14 +441,19 @@ class ImageGeneratorGUI:
             reverse=True
         )
 
+        row, col = 0, 0
         for img_file in image_files:
             img_path = os.path.join(results_folder, img_file)
-            self.add_image_to_gallery(img_path)
+            self.add_image_to_gallery(img_path, row, col)
+            col += 1
+            if col == 3:  # Move to next row after 3 columns
+                col = 0
+                row += 1
 
-    def on_frame_configure(self, event):
+        # Update scroll region after adding all images
         self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
 
-    def add_image_to_gallery(self, img_path):
+    def add_image_to_gallery(self, img_path, row, col):
         # Open the image and create a thumbnail
         with Image.open(img_path) as img:
             img.thumbnail((100, 100))  # Resize image to fit in the gallery
@@ -436,10 +462,18 @@ class ImageGeneratorGUI:
         # Create a label with the image and add it to the gallery
         label = ttk.Label(self.gallery_images_frame, image=photo)
         label.image = photo  # Keep a reference to prevent garbage collection
-        label.pack(side=tk.LEFT, padx=5)
+        label.grid(row=row, column=col, padx=5, pady=5)
 
         # Bind click event to open full-size image
         label.bind("<Button-1>", lambda e, path=img_path: self.open_full_size_image(path))
+
+    def update_scroll_region(self):
+        # Update the scroll region to encompass all the images
+        self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
+
+        # Ensure the canvas width matches the inner frame width
+        self.gallery_canvas.config(
+            width=max(self.gallery_images_frame.winfo_reqwidth(), self.gallery_frame.winfo_width()))
 
     def open_full_size_image(self, img_path):
         # Open the full-size image in a new window
