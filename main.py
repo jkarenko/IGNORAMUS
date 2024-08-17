@@ -1,5 +1,6 @@
 import base64
 import datetime
+import json
 import os
 import random
 import tkinter as tk
@@ -9,6 +10,9 @@ from tkinter import ttk, filedialog
 import replicate
 import requests
 from PIL import Image, ImageTk
+from PIL.ExifTags import TAGS
+import piexif
+import piexif.helper
 
 
 def focus_previous_widget(event):
@@ -19,6 +23,16 @@ def focus_previous_widget(event):
 def focus_next_widget(event):
     event.widget.tk_focusNext().focus()
     return "break"
+
+
+def read_image_metadata(file_path):
+    try:
+        exif_dict = piexif.load(file_path)
+        user_comment = exif_dict["Exif"][piexif.ExifIFD.UserComment]
+        metadata = piexif.helper.UserComment.load(user_comment)
+        return json.loads(metadata)
+    except (KeyError, json.JSONDecodeError):
+        return None
 
 
 class ImageGeneratorGUI:
@@ -347,6 +361,11 @@ class ImageGeneratorGUI:
         # Schedule the long-running task
         self.master.after(100, lambda: self._generate_image_task(model, properties))
 
+    import json
+    from PIL import Image
+    from PIL.ExifTags import TAGS
+    from piexif import dump, load
+
     def _generate_image_task(self, model, properties):
         time_start = perf_counter()
 
@@ -370,16 +389,40 @@ class ImageGeneratorGUI:
         for idx, url in enumerate(output):
             response = requests.get(url)
             file_name = f"results/img_{current_time}{f'_{str(idx)}' if len(output) > 1 else ''}.jpg"
+
+            # Save the image temporarily
             with open(file_name, "wb") as file:
                 file.write(response.content)
-            self.output_text.insert(tk.END, f"Saved image: {file_name}\n")
+
+            # Open the image with Pillow
+            img = Image.open(file_name)
+
+            # Convert properties to a JSON string
+            metadata = json.dumps(properties)
+
+            # Create or update EXIF data
+            try:
+                exif_dict = piexif.load(img.info["exif"])
+            except KeyError:
+                exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+
+            # Add metadata to EXIF
+            user_comment = piexif.helper.UserComment.dump(metadata)
+            exif_dict["Exif"][piexif.ExifIFD.UserComment] = user_comment
+
+            # Convert EXIF dict to bytes
+            exif_bytes = piexif.dump(exif_dict)
+
+            # Save the image with updated EXIF data
+            img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
+
+            self.output_text.insert(tk.END, f"Saved image with metadata in EXIF: {file_name}\n")
 
         self.output_text.insert(tk.END, "Image generation complete!\n")
         self.output_text.config(state="disabled")
 
         # Update the gallery after image generation is complete
         self.master.after(0, self.load_images_from_results)
-
     def setup_keyboard_shortcuts(self):
         self.master.bind("<Tab>", focus_next_widget)
         self.master.bind("<Shift-Tab>", focus_previous_widget)
