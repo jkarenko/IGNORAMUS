@@ -129,8 +129,9 @@ class ImageGeneratorGUI:
     def initialize_variables(self):
         self.common_vars = {
             "aspect_ratio": tk.StringVar(value="16:9"),
+            "upscale": tk.BooleanVar(value=False),
             "seed": tk.IntVar(value=random.randint(0, 2 ** 32 - 1)),
-            "randomize_seed": tk.BooleanVar(value=True)
+            "randomize_seed": tk.BooleanVar(value=True),
         }
 
         self.default_values = {
@@ -215,25 +216,29 @@ class ImageGeneratorGUI:
         for param, var in self.common_vars.items():
             if param == "randomize_seed":
                 continue
-            ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
-                                                                                         pady=5, sticky="w")
-            if param == "aspect_ratio":
-                ttk.Combobox(self.param_frame, textvariable=var,
-                             values=["16:9", "21:9", "1:1", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"],
-                             state="readonly").grid(row=row, column=1, padx=5, pady=5, sticky="we")
-            elif param == "seed":
-                seed_frame = ttk.Frame(self.param_frame)
-                seed_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
-
-                seed_entry = ttk.Entry(seed_frame, textvariable=var)
-                seed_entry.grid(row=0, column=0, sticky="we")
-                seed_frame.columnconfigure(0, weight=1)
-
-                randomize_check = ttk.Checkbutton(seed_frame, text="Randomize",
-                                                  variable=self.common_vars["randomize_seed"])
-                randomize_check.grid(row=0, column=1, padx=(5, 0))
+            if param == "upscale":
+                checkbutton = ttk.Checkbutton(self.param_frame, text="Upscale", variable=var)
+                checkbutton.grid(row=row, column=0, columnspan=2, padx=5, pady=5, sticky="w")
             else:
-                ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
+                                                                                             pady=5, sticky="w")
+                if param == "aspect_ratio":
+                    ttk.Combobox(self.param_frame, textvariable=var,
+                                 values=["16:9", "21:9", "1:1", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"],
+                                 state="readonly").grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                elif param == "seed":
+                    seed_frame = ttk.Frame(self.param_frame)
+                    seed_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
+
+                    seed_entry = ttk.Entry(seed_frame, textvariable=var)
+                    seed_entry.grid(row=0, column=0, sticky="we")
+                    seed_frame.columnconfigure(0, weight=1)
+
+                    randomize_check = ttk.Checkbutton(seed_frame, text="Randomize",
+                                                      variable=self.common_vars["randomize_seed"])
+                    randomize_check.grid(row=0, column=1, padx=(5, 0))
+                else:
+                    ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
             row += 1
 
     def create_model_specific_fields(self, model: str) -> None:
@@ -430,26 +435,29 @@ class ImageGeneratorGUI:
 
             self.output_text.insert(tk.END, f"Saved image with metadata in EXIF.\n")
 
-            # Upscale the generated image
-            self.output_text.insert(tk.END, "Upscaling image...\n")
-            self.master.update_idletasks()
-            if upscaled_data := upscale_image(file_name):
-                # Remove the original image
-                os.remove(file_name)
+            # Upscale the generated image if the checkbox is checked
+            if properties.get("upscale", False):
+                self.output_text.insert(tk.END, "Upscaling image...\n")
+                self.master.update_idletasks()
+                if upscaled_data := upscale_image(file_name):
+                    # Remove the original image
+                    os.remove(file_name)
 
-                # Save the upscaled image with the original filename
-                with open(file_name, "wb") as upscaled_file:
-                    upscaled_file.write(upscaled_data)
+                    # Save the upscaled image with the original filename
+                    with open(file_name, "wb") as upscaled_file:
+                        upscaled_file.write(upscaled_data)
 
-                # Re-apply EXIF data to the upscaled image
-                try:
-                    upscaled_img = Image.open(file_name)
-                    upscaled_img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
-                    self.output_text.insert(tk.END, f"Original image replaced with upscaled version.\n")
-                except Exception as e:
-                    self.output_text.insert(tk.END, f"Error re-applying EXIF data: {str(e)}\n")
+                    # Re-apply EXIF data to the upscaled image
+                    try:
+                        upscaled_img = Image.open(file_name)
+                        upscaled_img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
+                        self.output_text.insert(tk.END, f"Original image replaced with upscaled version.\n")
+                    except Exception as e:
+                        self.output_text.insert(tk.END, f"Error re-applying EXIF data: {str(e)}\n")
+                else:
+                    self.output_text.insert(tk.END, "Error: Failed to upscale the image.\n")
             else:
-                self.output_text.insert(tk.END, "Error: Failed to upscale the image.\n")
+                self.output_text.insert(tk.END, "Upscaling skipped.\n")
 
         time_stop = perf_counter()
         self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n")
