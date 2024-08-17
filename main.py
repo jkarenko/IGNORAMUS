@@ -535,12 +535,56 @@ class ImageGeneratorGUI:
         top = tk.Toplevel(self.master)
         top.title("Full Size Image")
 
-        with Image.open(img_path) as img:
-            photo = ImageTk.PhotoImage(img)
+        # Create a canvas to hold the image
+        canvas = tk.Canvas(top)
+        canvas.pack(fill=tk.BOTH, expand=True)
 
-        label = ttk.Label(top, image=photo)
-        label.image = photo  # Keep a reference
-        label.pack()
+        # Open the image and store it in memory
+        with Image.open(img_path) as img:
+            self.full_size_image = img.copy()
+
+        # Function to resize the image
+        def resize_image(event=None):
+            # Get the current window size
+            window_width = top.winfo_width()
+            window_height = top.winfo_height()
+
+            # Check if the window size is valid
+            if window_width <= 1 or window_height <= 1:
+                return  # Skip resizing if the window is too small
+
+            # Calculate the scaling factor
+            img_width, img_height = self.full_size_image.size
+            scale = min(window_width / img_width, window_height / img_height)
+
+            # Resize the image
+            new_width = max(1, int(img_width * scale))
+            new_height = max(1, int(img_height * scale))
+            resized_img = self.full_size_image.copy().resize((new_width, new_height), Image.LANCZOS)
+
+            # Create a PhotoImage object
+            photo = ImageTk.PhotoImage(resized_img)
+
+            # Update the canvas
+            canvas.delete("all")
+            canvas.create_image(window_width // 2, window_height // 2, anchor=tk.CENTER, image=photo)
+            canvas.image = photo  # Keep a reference
+
+        # Bind the resize event
+        top.bind("<Configure>", lambda e: resize_image())
+
+        # Read metadata from EXIF
+        metadata = read_image_metadata(img_path)
+        if metadata:
+            # Create a text widget to display metadata
+            text_widget = tk.Text(top, height=10, wrap=tk.WORD)
+            text_widget.pack(fill=tk.X, expand=False)
+            text_widget.insert(tk.END, json.dumps(metadata, indent=2))
+            text_widget.config(state=tk.DISABLED)  # Make it read-only
+
+        # Initial resize
+        top.update_idletasks()  # Ensure the window size is updated
+        top.after(100, resize_image)  # Schedule the initial resize after a short delay
 
 
 if __name__ == "__main__":
