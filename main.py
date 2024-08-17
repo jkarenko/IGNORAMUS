@@ -68,7 +68,7 @@ class ImageGeneratorGUI:
         self.model_combo = None
         self.model_var = None
         self.master = master
-        master.title("Image Generator GUI")
+        master.title("IGNORAMUS")
         master.geometry("1200x900")
 
         self.common_vars = {}
@@ -655,8 +655,8 @@ class ImageGeneratorGUI:
 
 
 def initialize_app():
-    # if 'REPLICATE_API_TOKEN' in os.environ:
-    #     return
+    if 'REPLICATE_API_TOKEN' in os.environ:
+        return
 
     token_file = 'token.txt'
     if os.path.exists(token_file):
