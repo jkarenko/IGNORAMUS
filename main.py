@@ -604,6 +604,13 @@ class ImageGeneratorGUI:
             text_widget.insert(tk.END, json.dumps(metadata, indent=2))
             text_widget.config(state=tk.DISABLED)  # Make it read-only
 
+            # Create a Delete button
+            style = ttk.Style()
+            style.configure("Red.TButton", foreground="red", background="red")
+            delete_button = ttk.Button(frame, text="Delete", style="Red.TButton",
+                                       command=lambda: self.delete_image(img_path, top))
+            delete_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
             # Create a button to open image location
             open_location_button = ttk.Button(frame, text="Open Location",
                                               command=lambda: open_file_location(img_path))
@@ -620,6 +627,17 @@ class ImageGeneratorGUI:
         # Initial resize
         top.update_idletasks()  # Ensure the window size is updated
         top.after(100, resize_image)  # Schedule the initial resize after a short delay
+
+    def delete_image(self, img_path, window):
+        # Ask for confirmation
+        if tk.messagebox.askyesno("Delete Image", "Are you sure you want to delete this image?"):
+            try:
+                os.remove(img_path)
+                window.destroy()
+                self.load_images_from_results()  # Refresh the gallery
+                tk.messagebox.showinfo("Success", "Image deleted successfully.")
+            except Exception as e:
+                tk.messagebox.showerror("Error", f"Failed to delete image: {str(e)}")
 
     def set_widgets_and_close(self, metadata, window):
         self.set_widgets_from_metadata(metadata)
