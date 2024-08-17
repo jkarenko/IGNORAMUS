@@ -33,6 +33,8 @@ A Python-based graphical user interface for generating images using Flux models.
 2. Install Poetry if you haven't already: https://python-poetry.org/docs/#installation
 3. Navigate to the project directory
 4. Run `poetry install` to set up the virtual environment and install dependencies
+5. Either create a `token.txt` file in the project directory and put your Replicate API token in it, or set the `REPLICATE_API_TOKEN` environment variable to your token.
+
 
 ## Usage
 
