@@ -15,6 +15,8 @@ import replicate
 import requests
 from PIL import Image, ImageTk
 
+from upscaler import upscale_image
+
 
 def focus_previous_widget(event):
     event.widget.tk_focusPrev().focus()
@@ -378,6 +380,8 @@ class ImageGeneratorGUI:
         self.master.after(100, lambda: self._generate_image_task(model, properties))
 
     def _generate_image_task(self, model, properties):
+        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+
         time_start = perf_counter()
 
         try:
@@ -386,9 +390,6 @@ class ImageGeneratorGUI:
             self.output_text.insert(tk.END, f"Error: {str(e)}\n")
             self.output_text.config(state="disabled")
             return
-        time_stop = perf_counter()
-
-        self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n")
 
         if not os.path.exists("results"):
             os.makedirs("results")
@@ -396,7 +397,6 @@ class ImageGeneratorGUI:
         if isinstance(output, str):
             output = [output]
 
-        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         for idx, url in enumerate(output):
             response = requests.get(url)
             file_name = f"results/img_{current_time}{f'_{str(idx)}' if len(output) > 1 else ''}.jpg"
@@ -428,9 +428,32 @@ class ImageGeneratorGUI:
             # Save the image with updated EXIF data
             img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
 
-            self.output_text.insert(tk.END, f"Saved image with metadata in EXIF: {file_name}\n")
+            self.output_text.insert(tk.END, f"Saved image with metadata in EXIF.\n")
 
-        self.output_text.insert(tk.END, "Image generation complete!\n")
+            # Upscale the generated image
+            self.output_text.insert(tk.END, "Upscaling image...\n")
+            self.master.update_idletasks()
+            if upscaled_data := upscale_image(file_name):
+                # Remove the original image
+                os.remove(file_name)
+
+                # Save the upscaled image with the original filename
+                with open(file_name, "wb") as upscaled_file:
+                    upscaled_file.write(upscaled_data)
+
+                # Re-apply EXIF data to the upscaled image
+                try:
+                    upscaled_img = Image.open(file_name)
+                    upscaled_img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
+                    self.output_text.insert(tk.END, f"Original image replaced with upscaled version.\n")
+                except Exception as e:
+                    self.output_text.insert(tk.END, f"Error re-applying EXIF data: {str(e)}\n")
+            else:
+                self.output_text.insert(tk.END, "Error: Failed to upscale the image.\n")
+
+        time_stop = perf_counter()
+        self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n")
+        self.output_text.insert(tk.END, "Image generation and upscaling complete!\n")
         self.output_text.config(state="disabled")
 
         # Update the gallery after image generation is complete
