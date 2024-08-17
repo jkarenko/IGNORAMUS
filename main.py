@@ -23,6 +23,8 @@ def focus_next_widget(event):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.gallery_tab = None
+        self.gallery_notebook = None
         self.on_frame_configure = None
         self.gallery_images_frame = None
         self.gallery_scrollbar = None
@@ -39,7 +41,7 @@ class ImageGeneratorGUI:
         self.model_var = None
         self.master = master
         master.title("Image Generator GUI")
-        master.geometry("900x700")
+        master.geometry("1200x700")
 
         self.common_vars = {}
         self.model_specific_vars = {
@@ -55,11 +57,11 @@ class ImageGeneratorGUI:
     def create_widgets(self):
         # Create a main frame to hold everything
         main_frame = ttk.Frame(self.master)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame.pack(side=tk.TOP, expand=False)
 
         # Create left frame for controls
-        left_frame = ttk.Frame(main_frame, width=600)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        left_frame = ttk.Frame(main_frame)
+        left_frame.pack(side=tk.LEFT, expand=False)
 
         # Model selection
         ttk.Label(left_frame, text="Select Model:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
@@ -83,14 +85,14 @@ class ImageGeneratorGUI:
         self.generate_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
 
         # Output
-        self.output_text = tk.Text(left_frame, height=10, width=70, state="disabled")
+        self.output_text = tk.Text(left_frame, height=20, width=70, state="disabled")
         self.output_text.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
 
         self.initialize_variables()
         self.update_parameter_fields()
 
         # Create right frame for gallery
-        self.gallery_frame = ttk.Frame(main_frame, width=300)
+        self.gallery_frame = ttk.Frame(main_frame)
         self.gallery_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
     def initialize_variables(self):
@@ -402,13 +404,13 @@ class ImageGeneratorGUI:
         self.gallery_notebook.add(self.gallery_tab, text="Gallery")
 
         # Create a canvas for the gallery (this will make it scrollable)
-        self.gallery_canvas = tk.Canvas(self.gallery_tab)
+        self.gallery_canvas = tk.Canvas(self.gallery_tab, width=330, relief=tk.SUNKEN)
         self.gallery_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Add a vertical scrollbar
         self.gallery_scrollbar = ttk.Scrollbar(self.gallery_tab, orient="vertical",
                                                command=self.gallery_canvas.yview)
-        self.gallery_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.gallery_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
         self.gallery_canvas.configure(yscrollcommand=self.gallery_scrollbar.set)
 
         # Create a frame inside the canvas to hold the images
@@ -422,7 +424,6 @@ class ImageGeneratorGUI:
         self.load_images_from_results()
 
     def on_frame_configure(self, event):
-        # Update the scroll region to encompass the inner frame
         self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
 
     def load_images_from_results(self):
@@ -450,8 +451,9 @@ class ImageGeneratorGUI:
                 col = 0
                 row += 1
 
-        # Update scroll region after adding all images
-        self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
+        total_height = (
+                               row + 1) * 110  # Calculate height based on number of rows, assuming each image and padding is 110px
+        self.gallery_canvas.config(scrollregion=(0, 0, 0, total_height))
 
     def add_image_to_gallery(self, img_path, row, col):
         # Open the image and create a thumbnail
@@ -466,14 +468,6 @@ class ImageGeneratorGUI:
 
         # Bind click event to open full-size image
         label.bind("<Button-1>", lambda e, path=img_path: self.open_full_size_image(path))
-
-    def update_scroll_region(self):
-        # Update the scroll region to encompass all the images
-        self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
-
-        # Ensure the canvas width matches the inner frame width
-        self.gallery_canvas.config(
-            width=max(self.gallery_images_frame.winfo_reqwidth(), self.gallery_frame.winfo_width()))
 
     def open_full_size_image(self, img_path):
         # Open the full-size image in a new window
