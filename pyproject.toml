@@ -10,6 +10,7 @@ python = "^3.12"
 replicate = "*"
 tqdm = "^4.66.5"
 requests = "^2.32.3"
+pillow = "^10.4.0"
 
 
 [build-system]

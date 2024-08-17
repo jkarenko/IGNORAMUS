@@ -1,13 +1,14 @@
 import base64
 import datetime
 import os
+import random
 import tkinter as tk
 from time import perf_counter
 from tkinter import ttk, filedialog
-import random
 
 import replicate
 import requests
+from PIL import Image, ImageTk
 
 
 def focus_previous_widget(event):
@@ -22,6 +23,11 @@ def focus_next_widget(event):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.on_frame_configure = None
+        self.gallery_images_frame = None
+        self.gallery_scrollbar = None
+        self.gallery_canvas = None
+        self.gallery_frame = None
         self.step_values = None
         self.default_values = None
         self.default_values_dev = None
@@ -44,6 +50,7 @@ class ImageGeneratorGUI:
 
         self.create_widgets()
         self.setup_keyboard_shortcuts()
+        self.create_gallery()
 
     def create_widgets(self):
         # Model selection
@@ -73,6 +80,9 @@ class ImageGeneratorGUI:
 
         self.initialize_variables()
         self.update_parameter_fields()
+
+        self.gallery_frame = ttk.Frame(self.master)
+        self.gallery_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="we")
 
     def initialize_variables(self):
         self.common_vars = {
@@ -325,6 +335,7 @@ class ImageGeneratorGUI:
 
         # Schedule the long-running task
         self.master.after(100, self._generate_image_task, model, properties)
+        self.load_images_from_results()
 
     def _generate_image_task(self, model, properties):
         time_start = perf_counter()
@@ -371,6 +382,76 @@ class ImageGeneratorGUI:
 
         self.prompt_text.bind("<Tab>", focus_next_widget)
         self.prompt_text.bind("<Shift-Tab>", focus_previous_widget)
+
+    def create_gallery(self):
+        # Create a canvas for the gallery
+        self.gallery_canvas = tk.Canvas(self.gallery_frame, height=100)
+        self.gallery_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Add a horizontal scrollbar
+        self.gallery_scrollbar = ttk.Scrollbar(self.gallery_frame, orient=tk.HORIZONTAL,
+                                               command=self.gallery_canvas.xview)
+        self.gallery_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.gallery_canvas.configure(xscrollcommand=self.gallery_scrollbar.set)
+
+        # Create a frame inside the canvas to hold the images
+        self.gallery_images_frame = ttk.Frame(self.gallery_canvas)
+        self.gallery_canvas.create_window((0, 0), window=self.gallery_images_frame, anchor=tk.NW)
+
+        # Bind the configure event to update the scroll region
+        self.gallery_images_frame.bind("<Configure>", self.on_frame_configure)
+
+        # Load initial images
+        self.load_images_from_results()
+
+    def load_images_from_results(self):
+        results_folder = "results"
+        if not os.path.exists(results_folder):
+            return
+
+        # Clear existing images
+        for widget in self.gallery_images_frame.winfo_children():
+            widget.destroy()
+
+        # Get list of image files, sorted by modification time (newest first)
+        image_files = sorted(
+            [f for f in os.listdir(results_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))],
+            key=lambda x: os.path.getmtime(os.path.join(results_folder, x)),
+            reverse=True
+        )
+
+        for img_file in image_files:
+            img_path = os.path.join(results_folder, img_file)
+            self.add_image_to_gallery(img_path)
+
+    def on_frame_configure(self, event):
+        self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
+
+    def add_image_to_gallery(self, img_path):
+        # Open the image and create a thumbnail
+        with Image.open(img_path) as img:
+            img.thumbnail((100, 100))  # Resize image to fit in the gallery
+            photo = ImageTk.PhotoImage(img)
+
+        # Create a label with the image and add it to the gallery
+        label = ttk.Label(self.gallery_images_frame, image=photo)
+        label.image = photo  # Keep a reference to prevent garbage collection
+        label.pack(side=tk.LEFT, padx=5)
+
+        # Bind click event to open full-size image
+        label.bind("<Button-1>", lambda e, path=img_path: self.open_full_size_image(path))
+
+    def open_full_size_image(self, img_path):
+        # Open the full-size image in a new window
+        top = tk.Toplevel(self.master)
+        top.title("Full Size Image")
+
+        with Image.open(img_path) as img:
+            photo = ImageTk.PhotoImage(img)
+
+        label = ttk.Label(top, image=photo)
+        label.image = photo  # Keep a reference
+        label.pack()
 
 
 if __name__ == "__main__":
