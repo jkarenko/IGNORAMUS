@@ -21,7 +21,7 @@ def focus_next_widget(event):
 
 class ImageGeneratorGUI:
     def __init__(self, master):
-        self.default_values = None
+        self.default_values_dev = None
         self.output_text = None
         self.generate_button = None
         self.param_frame = None
@@ -73,40 +73,54 @@ class ImageGeneratorGUI:
 
     def initialize_variables(self):
         self.common_vars = {
-            "aspect_ratio": tk.StringVar(value="16:9"),
+            "aspect_ratio": tk.StringVar(value="1:1"),
         }
 
         self.model_specific_vars = {
             "pro": {
                 "steps": tk.IntVar(value=25),
                 "guidance": tk.DoubleVar(value=3.0),
-                "interval": tk.IntVar(value=2),
-                "safety_tolerance": tk.IntVar(value=5),
+                "interval": tk.DoubleVar(value=2.0),
+                "safety_tolerance": tk.IntVar(value=2),
             },
             "dev": {
                 "image_path": tk.StringVar(),
                 "guidance": tk.DoubleVar(value=3.5),
                 "num_outputs": tk.IntVar(value=1),
-                "output_format": tk.StringVar(value="jpg"),
+                "output_format": tk.StringVar(value="webp"),
                 "output_quality": tk.IntVar(value=80),
                 "prompt_strength": tk.DoubleVar(value=0.8),
                 "num_inference_steps": tk.IntVar(value=50),
-                "disable_safety_checker": tk.BooleanVar(value=True),
+                "disable_safety_checker": tk.BooleanVar(value=False),
             },
             "schnell": {
-                "num_outputs": tk.IntVar(value=4),
-                "output_format": tk.StringVar(value="jpg"),
-                "output_quality": tk.IntVar(value=90),
-                "disable_safety_checker": tk.BooleanVar(value=True),
+                "num_outputs": tk.IntVar(value=1),
+                "output_format": tk.StringVar(value="webp"),
+                "output_quality": tk.IntVar(value=80),
+                "disable_safety_checker": tk.BooleanVar(value=False),
             }
         }
 
         self.default_values = {
-            "guidance": 3.5,
-            "num_outputs": 1,
-            "output_quality": 80,
-            "prompt_strength": 0.8,
-            "num_inference_steps": 50,
+            "pro": {
+                "steps": 25,
+                "guidance": 3.0,
+                "interval": 2.0,
+                "safety_tolerance": 2,
+            },
+            "dev": {
+                "guidance": 3.5,
+                "num_outputs": 1,
+                "output_quality": 80,
+                "prompt_strength": 0.8,
+                "num_inference_steps": 50,
+                "output_format": "webp",
+            },
+            "schnell": {
+                "num_outputs": 1,
+                "output_quality": 80,
+                "output_format": "webp",
+            }
         }
 
     def update_parameter_fields(self, event=None):
@@ -130,7 +144,7 @@ class ImageGeneratorGUI:
                 ttk.Entry(self.param_frame, textvariable=var).grid(row=row, column=1, padx=5, pady=5, sticky="we")
             row += 1
 
-    def create_model_specific_fields(self, model):
+    def create_model_specific_fields(self, model: str) -> None:
         row = len(self.common_vars)
         for param, var in self.model_specific_vars[model].items():
             if param == "image_path":
@@ -142,52 +156,86 @@ class ImageGeneratorGUI:
             elif param == "disable_safety_checker":
                 checkbutton = ttk.Checkbutton(self.param_frame, text="Disable Safety Checker", variable=var)
                 checkbutton.grid(row=row, column=0, columnspan=2, padx=5, pady=5, sticky="w")
+            elif param == "output_format":
+                ttk.Label(self.param_frame, text="Output Format:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
+                format_combo = ttk.Combobox(self.param_frame, textvariable=var, values=["webp", "jpg", "png"],
+                                            state="readonly")
+                format_combo.grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                format_combo.set(self.default_values[model]["output_format"])
             else:
                 ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
                                                                                              pady=5, sticky="w")
-                if param in ["guidance", "num_outputs", "output_quality", "prompt_strength", "num_inference_steps"]:
+                if param in ["guidance", "num_outputs", "output_quality", "prompt_strength", "num_inference_steps",
+                             "steps", "interval", "safety_tolerance"]:
                     slider_frame = ttk.Frame(self.param_frame)
                     slider_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
 
-                    if param == "guidance":
-                        min_val, max_val, step = 0, 10, 0.1
-                    elif param == "num_outputs":
-                        min_val, max_val, step = 1, 4, 1
-                    elif param == "output_quality":
-                        min_val, max_val, step = 0, 100, 1
-                    elif param == "prompt_strength":
-                        min_val, max_val, step = 0, 1, 0.01
-                    elif param == "num_inference_steps":
-                        min_val, max_val, step = 1, 50, 1
+                    if model == "pro":
+                        if param == "guidance":
+                            min_val, max_val, step = 2, 5, 0.1
+                        elif param == "steps":
+                            min_val, max_val, step = 1, 50, 1
+                        elif param == "interval":
+                            min_val, max_val, step = 1, 4, 0.1
+                        elif param == "safety_tolerance":
+                            min_val, max_val, step = 1, 5, 1
+                    elif model == "dev":
+                        if param == "guidance":
+                            min_val, max_val, step = 0, 10, 0.1
+                        elif param == "num_outputs":
+                            min_val, max_val, step = 1, 4, 1
+                        elif param == "output_quality":
+                            min_val, max_val, step = 0, 100, 1
+                        elif param == "prompt_strength":
+                            min_val, max_val, step = 0, 1, 0.01
+                        elif param == "num_inference_steps":
+                            min_val, max_val, step = 1, 50, 1
+                    elif model == "schnell":
+                        if param == "num_outputs":
+                            min_val, max_val, step = 1, 4, 1
+                        elif param == "output_quality":
+                            min_val, max_val, step = 0, 100, 1
 
                     style = ttk.Style()
-                    style.configure("Grey.TLabel", foreground="grey")
+                    style.configure("Grey.TLabel", foreground="#A9A9A9")
+                    style.configure("Value.TLabel", anchor="e", width=6)
 
-                    min_label = ttk.Label(slider_frame, text=f"{min_val}", style="Grey.TLabel")
+                    min_label = ttk.Label(slider_frame, text=f"{min_val:.2f}", style="Grey.TLabel Value.TLabel")
                     min_label.grid(row=0, column=0, padx=(0, 5))
-                    max_label = ttk.Label(slider_frame, text=f"{max_val}", style="Grey.TLabel")
+                    max_label = ttk.Label(slider_frame, text=f"{max_val:.2f}", style="Grey.TLabel Value.TLabel")
                     max_label.grid(row=0, column=2, padx=(5, 0))
-                    value_label = ttk.Label(slider_frame, text=f"{var.get():.2f}")
-                    value_label.grid(row=0, column=3, padx=(10, 0))
+
+                    # Determine the format string based on the step size
+                    format_string = ".2f" if step < 0.1 else (".1f" if step < 1 else "d")
+                    value_label = ttk.Label(slider_frame, text=f"{var.get():{format_string}}", style="Value.TLabel")
+                    value_label.grid(row=0, column=3, padx=(5, 0))
 
                     def update_value(value, label=value_label, var=var):
-                        snapped_value = round(float(value) / step) * step
+                        float_value = float(value)
+                        if step >= 1:
+                            snapped_value = round(float_value)
+                        else:
+                            snapped_value = round(float_value / step) * step
                         var.set(snapped_value)
-                        label.config(text=f"{snapped_value:.2f}")
+                        label.config(text=f"{snapped_value:{format_string}}")
                         return snapped_value
+
+                    def create_update_function(label, var):
+                        return lambda value: update_value(value, label, var)
 
                     slider = ttk.Scale(
                         slider_frame,
                         from_=min_val,
                         to=max_val,
                         orient=tk.HORIZONTAL,
-                        command=lambda v, l=value_label, var=var: update_value(v, l, var)
+                        command=create_update_function(value_label, var)
                     )
-                    slider.grid(row=0, column=1, padx=5)
+                    slider.grid(row=0, column=1, padx=5, sticky="we")
+                    slider_frame.columnconfigure(1, weight=1)  # Make the slider expandable
                     slider.set(update_value(var.get(), value_label, var))  # Set initial value
 
-                    def reset_slider(event, s=slider, l=value_label, v=var):
-                        default_value = self.default_values[param]
+                    def reset_slider(event, s=slider, l=value_label, v=var, m=model, p=param):
+                        default_value = self.default_values[m].get(p, v.get())
                         s.set(update_value(default_value, l, v))
 
                     value_label.bind("<Button-1>", reset_slider)
