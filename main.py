@@ -334,7 +334,7 @@ class ImageGeneratorGUI:
 
     def browse_image(self):
         if filename := tk.filedialog.askopenfilename(
-            filetypes=[("Image files", "*.jpg *.jpeg *.png *.webm")]
+                filetypes=[("Image files", "*.jpg *.jpeg *.png *.webm")]
         ):
             self.model_specific_vars["dev"]["image_path"].set(filename)
 
