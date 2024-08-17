@@ -577,15 +577,49 @@ class ImageGeneratorGUI:
         # Read metadata from EXIF
         metadata = read_image_metadata(img_path)
         if metadata:
+            # Create a frame to hold the text widget and button
+            frame = ttk.Frame(top)
+            frame.pack(fill=tk.X, expand=False)
+
             # Create a text widget to display metadata
-            text_widget = tk.Text(top, height=10, wrap=tk.WORD)
-            text_widget.pack(fill=tk.X, expand=False)
+            text_widget = tk.Text(frame, height=10, wrap=tk.WORD)
+            text_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
             text_widget.insert(tk.END, json.dumps(metadata, indent=2))
             text_widget.config(state=tk.DISABLED)  # Make it read-only
+
+            # Create a button to set widgets according to EXIF data
+            set_widgets_button = ttk.Button(frame, text="Set Widgets",
+                                            command=lambda: self.set_widgets_from_metadata(metadata))
+            set_widgets_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
         # Initial resize
         top.update_idletasks()  # Ensure the window size is updated
         top.after(100, resize_image)  # Schedule the initial resize after a short delay
+
+    def set_widgets_from_metadata(self, metadata):
+        # Set model
+        if "model" in metadata:
+            self.model_var.set(metadata["model"])
+            self.update_parameter_fields()
+
+        # Set prompt
+        if "prompt" in metadata:
+            self.prompt_text.delete("1.0", tk.END)
+            self.prompt_text.insert(tk.END, metadata["prompt"])
+
+        # Set common variables
+        for key, var in self.common_vars.items():
+            if key in metadata:
+                var.set(metadata[key])
+
+        # Set model-specific variables
+        model = metadata.get("model", self.model_var.get())
+        for key, var in self.model_specific_vars[model].items():
+            if key in metadata:
+                var.set(metadata[key])
+
+        # Update the UI
+        self.master.update_idletasks()
 
 
 if __name__ == "__main__":
