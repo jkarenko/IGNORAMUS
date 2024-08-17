@@ -345,21 +345,13 @@ class ImageGeneratorGUI:
         self.master.update_idletasks()
 
         # Schedule the long-running task
-        self.master.after(100, self._generate_image_task, model, properties)
-        self.load_images_from_results()
+        self.master.after(100, lambda: self._generate_image_task(model, properties))
 
     def _generate_image_task(self, model, properties):
         time_start = perf_counter()
 
-        # self.output_text.insert(tk.END, "Sending to API:\n")
-        # self.output_text.insert(tk.END, f"{properties}\n\n")
-        # self.master.update_idletasks()
-
         try:
             output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
-
-            # self.output_text.insert(tk.END, "Raw API output:\n")
-            # self.output_text.insert(tk.END, f"{output}\n\n")
         except Exception as e:
             self.output_text.insert(tk.END, f"Error: {str(e)}\n")
             self.output_text.config(state="disabled")
@@ -385,6 +377,9 @@ class ImageGeneratorGUI:
         self.output_text.insert(tk.END, "Image generation complete!\n")
         self.output_text.config(state="disabled")
 
+        # Update the gallery after image generation is complete
+        self.master.after(0, self.load_images_from_results)
+
     def setup_keyboard_shortcuts(self):
         self.master.bind("<Tab>", focus_next_widget)
         self.master.bind("<Shift-Tab>", focus_previous_widget)
@@ -408,9 +403,8 @@ class ImageGeneratorGUI:
         self.gallery_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Add a vertical scrollbar
-        self.gallery_scrollbar = ttk.Scrollbar(self.gallery_tab, orient="vertical",
-                                               command=self.gallery_canvas.yview)
-        self.gallery_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.gallery_scrollbar = ttk.Scrollbar(self.gallery_tab, orient="vertical", command=self.gallery_canvas.yview)
+        self.gallery_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.gallery_canvas.configure(yscrollcommand=self.gallery_scrollbar.set)
 
         # Create a frame inside the canvas to hold the images
@@ -420,11 +414,17 @@ class ImageGeneratorGUI:
         # Configure the canvas to update its scroll region when the size of the frame changes
         self.gallery_images_frame.bind("<Configure>", self.on_frame_configure)
 
+        # Bind mousewheel event to the canvas
+        self.gallery_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
         # Load initial images
         self.load_images_from_results()
 
     def on_frame_configure(self, event):
         self.gallery_canvas.configure(scrollregion=self.gallery_canvas.bbox("all"))
+
+    def _on_mousewheel(self, event):
+        self.gallery_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def load_images_from_results(self):
         results_folder = "results"
@@ -451,9 +451,8 @@ class ImageGeneratorGUI:
                 col = 0
                 row += 1
 
-        total_height = (
-                               row + 1) * 110  # Calculate height based on number of rows, assuming each image and padding is 110px
-        self.gallery_canvas.config(scrollregion=(0, 0, 0, total_height))
+        self.gallery_images_frame.update_idletasks()
+        self.gallery_canvas.config(scrollregion=self.gallery_canvas.bbox("all"))
 
     def add_image_to_gallery(self, img_path, row, col):
         # Open the image and create a thumbnail
