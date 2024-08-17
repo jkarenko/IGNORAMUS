@@ -646,6 +646,9 @@ class ImageGeneratorGUI:
             if key in metadata:
                 var.set(metadata[key])
 
+        # Always set randomize seed to False when setting widgets from metadata
+        self.common_vars["randomize_seed"].set(False)
+
         # Update the UI
         self.master.update_idletasks()
 
