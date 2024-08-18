@@ -13,7 +13,10 @@ import piexif
 import piexif.helper
 import replicate
 import requests
-from PIL import Image, ImageTk
+from PIL import Image
+from PIL import ImageTk
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import QApplication
 
 from upscaler import upscale_image
 
@@ -49,6 +52,35 @@ def open_file_location(file_path):
         subprocess.Popen(["open", dir_path])
     else:  # Linux and other Unix-like
         subprocess.Popen(["xdg-open", dir_path])
+
+
+def copy_image_to_clipboard(img_path):
+    try:
+        # Open the image using Pillow
+        pil_image = Image.open(img_path)
+
+        # Convert the image to RGB mode if it's not already
+        if pil_image.mode != 'RGB':
+            pil_image = pil_image.convert('RGB')
+
+        # Convert PIL image to QImage
+        qimage = QImage(pil_image.tobytes(), pil_image.width, pil_image.height, QImage.Format_RGB888)
+
+        # Create QApplication instance if it doesn't exist
+        app = QApplication.instance()
+        if not app:
+            app = QApplication([])
+
+        # Create QPixmap from QImage
+        pixmap = QPixmap.fromImage(qimage)
+
+        # Copy to clipboard
+        clipboard = app.clipboard()
+        clipboard.setPixmap(pixmap)
+
+        print(f"Image {img_path} copied to clipboard successfully.")
+    except Exception as e:
+        print(f"Error copying image to clipboard: {str(e)}")
 
 
 class ImageGeneratorGUI:
@@ -637,20 +669,26 @@ class ImageGeneratorGUI:
 
             # Create a Delete button
             style = ttk.Style()
-            style.configure("Red.TButton", foreground="red", background="red")
-            delete_button = ttk.Button(frame, text="Delete", style="Red.TButton",
+            style.configure("Red.TButton", foreground="#FF7C8B")
+            style.configure("Blue.TButton", foreground="lightblue")
+
+            delete_button = ttk.Button(frame, text="🗑️ Delete", style="Red.TButton",
                                        command=lambda: self.delete_image(img_path, top))
-            delete_button.pack(side=tk.RIGHT, padx=5, pady=5)
+            delete_button.pack(side=tk.BOTTOM, padx=5, pady=5)
 
             # Create a button to open image location
-            open_location_button = ttk.Button(frame, text="Open Location",
+            open_location_button = ttk.Button(frame, text="📂 Open", style="Blue.TButton",
                                               command=lambda: open_file_location(img_path))
-            open_location_button.pack(side=tk.RIGHT, padx=5, pady=5)
+            open_location_button.pack(side=tk.BOTTOM, padx=5, pady=5)
+
+            # Create a button to copy the image to clipboard
+            copy_button = ttk.Button(frame, text="📋 Copy", command=lambda: copy_image_to_clipboard(img_path))
+            copy_button.pack(side=tk.BOTTOM, padx=2, pady=2)
 
             # Create a button to set widgets according to EXIF data
             set_widgets_button = ttk.Button(frame, text="Set Widgets",
                                             command=lambda: self.set_widgets_and_close(metadata, top))
-            set_widgets_button.pack(side=tk.RIGHT, padx=5, pady=5)
+            set_widgets_button.pack(side=tk.BOTTOM, padx=5, pady=5)
 
         # Bind click event to close the window
         canvas.bind("<Button-1>", lambda e: top.destroy())
