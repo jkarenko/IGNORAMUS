@@ -39,7 +39,7 @@ A Python-based graphical user interface for generating images using Flux models.
 
 ## Usage
 
-`poetry run python main.py`
+`poetry run ignoramus`
 
 ## Development
 
