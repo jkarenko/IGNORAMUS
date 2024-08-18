@@ -5,6 +5,7 @@ import os
 import platform
 import random
 import subprocess
+import time
 import tkinter as tk
 from time import perf_counter
 from tkinter import ttk, filedialog
@@ -623,19 +624,38 @@ class ImageGeneratorGUI:
         top = tk.Toplevel(self.master)
         top.title("Full Size Image")
 
+        # Create a main frame to hold everything
+        main_frame = ttk.Frame(top)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
         # Create a canvas to hold the image
-        canvas = tk.Canvas(top)
+        canvas = tk.Canvas(main_frame)
         canvas.pack(fill=tk.BOTH, expand=True)
 
         # Open the image and store it in memory
         with Image.open(img_path) as img:
             self.full_size_image = img.copy()
 
+        # Create a frame to hold the text widget and buttons
+        control_frame = ttk.Frame(main_frame)
+        control_frame.pack(fill=tk.X, expand=False, side=tk.BOTTOM)
+
+        # Variables for delayed resizing
+        resize_timer = None
+        last_resize_time = 0
+        resize_delay = 200  # milliseconds
+
         # Function to resize the image
-        def resize_image(event=None):
+        def resize_image():
+            nonlocal last_resize_time
+            current_time = time.time() * 1000  # Convert to milliseconds
+            if current_time - last_resize_time < resize_delay:
+                return
+
             # Get the current window size
             window_width = top.winfo_width()
             window_height = top.winfo_height()
+            control_height = control_frame.winfo_height()
 
             # Check if the window size is valid
             if window_width <= 1 or window_height <= 1:
@@ -643,7 +663,8 @@ class ImageGeneratorGUI:
 
             # Calculate the scaling factor
             img_width, img_height = self.full_size_image.size
-            scale = min(window_width / img_width, window_height / img_height)
+            available_height = window_height - control_height
+            scale = min(window_width / img_width, available_height / img_height)
 
             # Resize the image
             new_width = max(1, int(img_width * scale))
@@ -655,52 +676,63 @@ class ImageGeneratorGUI:
 
             # Update the canvas
             canvas.delete("all")
-            canvas.create_image(window_width // 2, window_height // 2, anchor=tk.CENTER, image=photo)
+            canvas.create_image(window_width // 2, available_height // 2, anchor=tk.CENTER, image=photo)
             canvas.image = photo  # Keep a reference
 
-        # Bind the resize event
-        top.bind("<Configure>", lambda e: resize_image())
+            last_resize_time = current_time
+
+        # Function to schedule delayed resize
+        def schedule_resize(event=None):
+            nonlocal resize_timer
+            if resize_timer is not None:
+                top.after_cancel(resize_timer)
+            resize_timer = top.after(resize_delay, resize_image)
 
         # Read metadata from EXIF
         metadata = read_image_metadata(img_path)
         if metadata:
-            # Create a frame to hold the text widget and buttons
-            frame = ttk.Frame(top)
-            frame.pack(fill=tk.X, expand=False)
-
             # Create a text widget to display metadata
-            text_widget = tk.Text(frame, height=10, wrap=tk.WORD)
+            text_widget = tk.Text(control_frame, height=10, wrap=tk.WORD)
             text_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
             text_widget.insert(tk.END, json.dumps(metadata, indent=2))
             text_widget.config(state=tk.DISABLED)  # Make it read-only
+
+            # Create a frame for buttons
+            button_frame = ttk.Frame(control_frame)
+            button_frame.pack(side=tk.RIGHT, fill=tk.Y)
+
+            # Create a button to set widgets according to EXIF data
+            set_widgets_button = ttk.Button(button_frame, text="🔧 Set Widgets",
+                                            command=lambda: self.set_widgets_and_close(metadata, top))
+            set_widgets_button.pack(side=tk.TOP, padx=5, pady=5)
+
+            # Create an Upscale button
+            upscale_button = ttk.Button(button_frame, text="🔍 Upscale",
+                                        command=lambda: self.upscale_image(img_path, metadata, top))
+            upscale_button.pack(side=tk.TOP, padx=5, pady=5)
+
+            # Create a button to copy the image to clipboard
+            copy_button = ttk.Button(button_frame, text="📋 Clipboard",
+                                     command=lambda: copy_image_to_clipboard(img_path))
+            copy_button.pack(side=tk.TOP, padx=2, pady=2)
+
+            # Create a button to open image location
+            open_location_button = ttk.Button(button_frame, text="📂 Open", style="Blue.TButton",
+                                              command=lambda: open_file_location(img_path))
+            open_location_button.pack(side=tk.TOP, padx=5, pady=5)
 
             # Create a Delete button
             style = ttk.Style()
             style.configure("Red.TButton", foreground="#FF7C8B")
             style.configure("Blue.TButton", foreground="lightblue")
 
-            delete_button = ttk.Button(frame, text="🗑️ Delete", style="Red.TButton",
+            delete_button = ttk.Button(button_frame, text="🗑️ Delete", style="Red.TButton",
                                        command=lambda: self.delete_image(img_path, top))
-            delete_button.pack(side=tk.BOTTOM, padx=5, pady=5)
+            delete_button.pack(side=tk.TOP, padx=5, pady=5)
 
-            # Create a button to open image location
-            open_location_button = ttk.Button(frame, text="📂 Open", style="Blue.TButton",
-                                              command=lambda: open_file_location(img_path))
-            open_location_button.pack(side=tk.BOTTOM, padx=5, pady=5)
-
-            # Create a button to copy the image to clipboard
-            copy_button = ttk.Button(frame, text="📋 Clipboard", command=lambda: copy_image_to_clipboard(img_path))
-            copy_button.pack(side=tk.BOTTOM, padx=2, pady=2)
-
-            # Create an Upscale button
-            upscale_button = ttk.Button(frame, text="🔍 Upscale",
-                                        command=lambda: self.upscale_image(img_path, metadata, top))
-            upscale_button.pack(side=tk.BOTTOM, padx=5, pady=5)
-
-            # Create a button to set widgets according to EXIF data
-            set_widgets_button = ttk.Button(frame, text="🔧 Set Widgets",
-                                            command=lambda: self.set_widgets_and_close(metadata, top))
-            set_widgets_button.pack(side=tk.BOTTOM, padx=5, pady=5)
+        # Bind the resize event
+        top.bind("<Configure>", schedule_resize)
+        top.bind("<ButtonRelease-1>", schedule_resize)  # Trigger resize on mouse button release
 
         # Bind click event to close the window
         canvas.bind("<Button-1>", lambda e: top.destroy())
