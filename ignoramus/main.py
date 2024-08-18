@@ -5,9 +5,9 @@ import os
 import platform
 import random
 import subprocess
-import sys
 import time
 import tkinter as tk
+import threading
 from time import perf_counter
 from tkinter import ttk, filedialog
 
@@ -490,27 +490,53 @@ class ImageGeneratorGUI:
         self.output_text.insert(tk.END, "\n")
         self.master.update_idletasks()
 
-        # Schedule the long-running task
-        self.master.after(100, lambda: self._generate_image_task(model, properties))
+        # Show loading screen
+        loading_screen = self.show_loading_screen()
 
-    def _generate_image_task(self, model, properties):
+        # Start the image generation in a separate thread
+        thread = threading.Thread(target=self._generate_image_task, args=(model, properties, loading_screen))
+        thread.start()
+
+    def show_loading_screen(self):
+        # Create a Toplevel window that covers the entire main window
+        loading_screen = tk.Toplevel(self.master)
+        loading_screen.geometry(
+            f"{self.master.winfo_width()}x{self.master.winfo_height()}+{self.master.winfo_x()}+{self.master.winfo_y()}")
+        loading_screen.overrideredirect(True)  # Remove window decorations
+        loading_screen.attributes("-alpha", 0.5)  # Set transparency
+        loading_screen.attributes("-topmost", True)  # Ensure it's on top
+
+        # Create a frame to hold the loading message
+        frame = ttk.Frame(loading_screen, style="Overlay.TFrame")
+        frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        # Add a label to display the loading message
+        loading_label = ttk.Label(frame, text="Generating image...", font=("Helvetica", 50), background="white")
+        loading_label.pack(expand=True)
+
+        loading_screen.update_idletasks()
+        return loading_screen
+
+    def _generate_image_task(self, model, properties, loading_screen):
         time_start = perf_counter()
 
         try:
             output, current_time, results_dir = generate_image(model, properties)
+
+            self.master.after(0, lambda: process_generated_images(output, current_time, results_dir, properties, model,
+                                                                  self.output_text))
+
+            time_stop = perf_counter()
+            self.master.after(0, lambda: self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n"))
+            self.master.after(0, lambda: self.output_text.insert(tk.END, "Image generation and upscaling complete!\n"))
+            self.master.after(0, self.load_images_from_results)
+
         except Exception as e:
-            self.output_text.insert(tk.END, f"{str(e)}\n")
-            self.output_text.config(state="disabled")
-            return
+            self.master.after(0, lambda: self.output_text.insert(tk.END, f"Error: {str(e)}\n"))
 
-        process_generated_images(output, current_time, results_dir, properties, model, self.output_text)
-
-        time_stop = perf_counter()
-        self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n")
-        self.output_text.insert(tk.END, "Image generation and upscaling complete!\n")
-        self.output_text.config(state="disabled")
-
-        self.master.after(0, self.load_images_from_results)
+        finally:
+            self.master.after(0, lambda: self.output_text.config(state="disabled"))
+            self.master.after(0, loading_screen.destroy)
 
     def setup_keyboard_shortcuts(self):
         self.master.bind("<Tab>", focus_next_widget)
