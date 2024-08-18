@@ -81,6 +81,75 @@ def copy_image_to_clipboard(img_path):
         print(f"Error copying image to clipboard: {str(e)}")
 
 
+def create_exif_metadata(properties, model):
+    properties["model"] = model
+    metadata = json.dumps(properties)
+    user_comment = piexif.helper.UserComment.dump(metadata)
+    return {"Exif": {piexif.ExifIFD.UserComment: user_comment}}
+
+
+def save_image_with_metadata(img, file_name, exif_dict):
+    exif_bytes = piexif.dump(exif_dict)
+    img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
+
+
+def fetch_and_save_image(url, file_name):
+    response = requests.get(url)
+    with open(file_name, "wb") as file:
+        file.write(response.content)
+
+
+def get_output_directory():
+    if not os.path.exists("results"):
+        os.makedirs("results")
+    return "results"
+
+
+def update_output_text(output_text, message):
+    output_text.insert(tk.END, message)
+    output_text.config(state="disabled")
+
+
+def generate_image(model, properties):
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    results_dir = get_output_directory()
+    try:
+        output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
+        return output, current_time, results_dir
+    except Exception:
+        raise
+
+
+def handle_upscaling(file_name, exif_bytes, output_text):
+    update_output_text(output_text, "Upscaling image...\n")
+    if upscaled_data := upscale_image(file_name):
+        os.remove(file_name)
+        with open(file_name, "wb") as upscaled_file:
+            upscaled_file.write(upscaled_data)
+        try:
+            upscaled_img = Image.open(file_name)
+            upscaled_img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
+            update_output_text(output_text, "Original image replaced with upscaled version.\n")
+        except Exception as e:
+            update_output_text(output_text, f"Error re-applying EXIF data: {str(e)}\n")
+    else:
+        update_output_text(output_text, "Error: Failed to upscale the image.\n")
+
+
+def process_generated_images(output, current_time, results_dir, properties, model, output_text):
+    for idx, url in enumerate(output):
+        file_name = f"{results_dir}/img_{current_time}{f'_{str(idx)}' if len(output) > 1 else ''}.jpg"
+        fetch_and_save_image(url, file_name)
+        img = Image.open(file_name)
+        exif_dict = create_exif_metadata(properties, model)
+        save_image_with_metadata(img, file_name, exif_dict)
+        update_output_text(output_text, "Saved image with metadata in EXIF.\n")
+        if properties.get("upscale", False):
+            handle_upscaling(file_name, piexif.dump(exif_dict), output_text)
+        else:
+            update_output_text(output_text, "Upscaling skipped.\n")
+
+
 class ImageGeneratorGUI:
     def __init__(self, master):
         self.full_size_image = None
@@ -415,86 +484,22 @@ class ImageGeneratorGUI:
         self.master.after(100, lambda: self._generate_image_task(model, properties))
 
     def _generate_image_task(self, model, properties):
-        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-
         time_start = perf_counter()
 
         try:
-            output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
+            output, current_time, results_dir = generate_image(model, properties)
         except Exception as e:
-            self.output_text.insert(tk.END, f"Error: {str(e)}\n")
+            self.output_text.insert(tk.END, f"{str(e)}\n")
             self.output_text.config(state="disabled")
             return
 
-        if not os.path.exists("results"):
-            os.makedirs("results")
-
-        if isinstance(output, str):
-            output = [output]
-
-        for idx, url in enumerate(output):
-            response = requests.get(url)
-            file_name = f"results/img_{current_time}{f'_{str(idx)}' if len(output) > 1 else ''}.jpg"
-
-            # Save the image temporarily
-            with open(file_name, "wb") as file:
-                file.write(response.content)
-
-            # Open the image with Pillow
-            img = Image.open(file_name)
-
-            properties["model"] = model
-            # Convert properties to a JSON string
-            metadata = json.dumps(properties)
-
-            # Create or update EXIF data
-            try:
-                exif_dict = piexif.load(img.info["exif"])
-            except KeyError:
-                exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
-
-            # Add metadata to EXIF
-            user_comment = piexif.helper.UserComment.dump(metadata)
-            exif_dict["Exif"][piexif.ExifIFD.UserComment] = user_comment
-
-            # Convert EXIF dict to bytes
-            exif_bytes = piexif.dump(exif_dict)
-
-            # Save the image with updated EXIF data
-            img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
-
-            self.output_text.insert(tk.END, f"Saved image with metadata in EXIF.\n")
-
-            # Upscale the generated image if the checkbox is checked
-            if properties.get("upscale", False):
-                self.output_text.insert(tk.END, "Upscaling image...\n")
-                self.master.update_idletasks()
-                if upscaled_data := upscale_image(file_name):
-                    # Remove the original image
-                    os.remove(file_name)
-
-                    # Save the upscaled image with the original filename
-                    with open(file_name, "wb") as upscaled_file:
-                        upscaled_file.write(upscaled_data)
-
-                    # Re-apply EXIF data to the upscaled image
-                    try:
-                        upscaled_img = Image.open(file_name)
-                        upscaled_img.save(file_name, "JPEG", exif=exif_bytes, quality=95)
-                        self.output_text.insert(tk.END, f"Original image replaced with upscaled version.\n")
-                    except Exception as e:
-                        self.output_text.insert(tk.END, f"Error re-applying EXIF data: {str(e)}\n")
-                else:
-                    self.output_text.insert(tk.END, "Error: Failed to upscale the image.\n")
-            else:
-                self.output_text.insert(tk.END, "Upscaling skipped.\n")
+        process_generated_images(output, current_time, results_dir, properties, model, self.output_text)
 
         time_stop = perf_counter()
         self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n")
         self.output_text.insert(tk.END, "Image generation and upscaling complete!\n")
         self.output_text.config(state="disabled")
 
-        # Update the gallery after image generation is complete
         self.master.after(0, self.load_images_from_results)
 
     def setup_keyboard_shortcuts(self):
