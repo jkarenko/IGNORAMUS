@@ -357,9 +357,9 @@ class ImageGeneratorGUI:
                     slider_frame.columnconfigure(1, weight=1)  # Make the slider expandable
                     slider.set(update_value(var.get(), value_label, var, param))  # Set initial value
 
-                    def reset_slider(event, s=slider, l=value_label, v=var, m=model, p=param):
-                        default_value = self.default_values[m].get(p, v.get())
-                        s.set(update_value(default_value, l, v, p))
+                    def reset_slider(event, s=slider, label=value_label, value=var, m=model, p=param):
+                        default_value = self.default_values[m].get(p, value.get())
+                        s.set(update_value(default_value, label, value, p))
 
                     value_label.bind("<Button-1>", reset_slider)
                 else:
