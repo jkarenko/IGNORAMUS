@@ -140,6 +140,9 @@ def handle_upscaling(file_name, exif_bytes, output_text):
 
 
 def process_generated_images(output, current_time, results_dir, properties, model, output_text):
+    # if output is not a list, convert it to a list
+    if not isinstance(output, list):
+        output = [output]
     for idx, url in enumerate(output):
         file_name = f"{results_dir}/img_{current_time}{f'_{str(idx)}' if len(output) > 1 else ''}.jpg"
         fetch_and_save_image(url, file_name)
