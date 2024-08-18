@@ -67,9 +67,7 @@ def copy_image_to_clipboard(img_path):
         qimage = QImage(pil_image.tobytes(), pil_image.width, pil_image.height, QImage.Format_RGB888)
 
         # Create QApplication instance if it doesn't exist
-        app = QApplication.instance()
-        if not app:
-            app = QApplication([])
+        app = QApplication.instance() or QApplication([])
 
         # Create QPixmap from QImage
         pixmap = QPixmap.fromImage(qimage)
