@@ -152,6 +152,7 @@ def process_generated_images(output, current_time, results_dir, properties, mode
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.sliders = None
         self.full_size_image = None
         self.gallery_tab = None
         self.gallery_notebook = None
@@ -306,6 +307,8 @@ class ImageGeneratorGUI:
         for widget in self.param_frame.winfo_children():
             widget.destroy()
 
+        self.sliders = {}
+
         model = self.model_var.get()
         self.create_common_fields()
         self.create_model_specific_fields(model)
@@ -423,6 +426,7 @@ class ImageGeneratorGUI:
                         command=create_update_function(value_label, var, param)
                     )
                     slider.grid(row=0, column=1, padx=5, sticky="we")
+                    self.sliders[param] = slider
                     slider_frame.columnconfigure(1, weight=1)  # Make the slider expandable
                     slider.set(update_value(var.get(), value_label, var, param))  # Set initial value
 
@@ -685,18 +689,18 @@ class ImageGeneratorGUI:
             open_location_button.pack(side=tk.BOTTOM, padx=5, pady=5)
 
             # Create a button to copy the image to clipboard
-            copy_button = ttk.Button(frame, text="📋 Copy", command=lambda: copy_image_to_clipboard(img_path))
+            copy_button = ttk.Button(frame, text="📋 Clipboard", command=lambda: copy_image_to_clipboard(img_path))
             copy_button.pack(side=tk.BOTTOM, padx=2, pady=2)
-
-            # Create a button to set widgets according to EXIF data
-            set_widgets_button = ttk.Button(frame, text="Set Widgets",
-                                            command=lambda: self.set_widgets_and_close(metadata, top))
-            set_widgets_button.pack(side=tk.BOTTOM, padx=5, pady=5)
 
             # Create an Upscale button
             upscale_button = ttk.Button(frame, text="🔍 Upscale",
                                         command=lambda: self.upscale_image(img_path, metadata, top))
             upscale_button.pack(side=tk.BOTTOM, padx=5, pady=5)
+
+            # Create a button to set widgets according to EXIF data
+            set_widgets_button = ttk.Button(frame, text="🔧 Set Widgets",
+                                            command=lambda: self.set_widgets_and_close(metadata, top))
+            set_widgets_button.pack(side=tk.BOTTOM, padx=5, pady=5)
 
         # Bind click event to close the window
         canvas.bind("<Button-1>", lambda e: top.destroy())
@@ -786,9 +790,16 @@ class ImageGeneratorGUI:
         for key, var in self.model_specific_vars[model].items():
             if key in metadata:
                 var.set(metadata[key])
+                if key in self.sliders:
+                    self.sliders[key].set(metadata[key])
 
         # Always set randomize seed to False when setting widgets from metadata
         self.common_vars["randomize_seed"].set(False)
+
+        # Force update of all sliders
+        for param, slider in self.sliders.items():
+            value = self.model_specific_vars[model][param].get()
+            slider.set(value)
 
         # Update the UI
         self.master.update_idletasks()
