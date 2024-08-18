@@ -413,7 +413,12 @@ class ImageGeneratorGUI:
                             min_val, max_val, step = 0, 100, 1
 
                     style = ttk.Style()
-                    style.theme_use("aqua")
+                    if platform.system() == "Darwin":
+                        style.theme_use("aqua")
+                    elif platform.system() == "Windows":
+                        style.theme_use("xpnative")
+                    else:
+                        style.theme_use("clam")
                     style.configure("Value.TLabel", anchor="e", width=6)
                     style.configure("blue.Horizontal.TProgressbar", troughcolor='lightgray', background='blue')
 
@@ -906,7 +911,7 @@ def initialize_app():
         print("Replicate API token loaded from environment variable.")
         return
 
-    token_file = 'token.txt'
+    token_file = './token.txt'
     if os.path.exists(token_file):
         with open(token_file, 'r') as file:
             api_token = file.read().strip()
