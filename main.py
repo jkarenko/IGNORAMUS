@@ -703,10 +703,7 @@ class ImageGeneratorGUI:
         top.after(100, resize_image)  # Schedule the initial resize after a short delay
 
     def upscale_image(self, img_path, metadata, window):
-        # Perform upscaling
-        upscaled_data = upscale_image(img_path)
-
-        if upscaled_data:
+        if upscaled_data := upscale_image(img_path):
             # Generate a new filename for the upscaled image
             base_name, ext = os.path.splitext(img_path)
             upscaled_path = f"{base_name}_upscaled{ext}"
