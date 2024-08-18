@@ -20,6 +20,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication
 
 from upscaler import upscale_image
+from version_checker import get_current_version, check_latest_version, update_application
 
 
 def focus_previous_widget(event):
@@ -839,6 +840,7 @@ class ImageGeneratorGUI:
 
 def initialize_app():
     if 'REPLICATE_API_TOKEN' in os.environ:
+        print("Replicate API token loaded from environment variable.")
         return
 
     token_file = 'token.txt'
@@ -851,6 +853,16 @@ def initialize_app():
         print(
             f"ERROR: REPLICATE_API_TOKEN not set and {token_file} not found. Please set the environment variable or create {token_file} with your Replicate API token.")
 
+
+if current_version := get_current_version():
+    is_latest, message = check_latest_version(current_version)
+    print(message)
+    if not is_latest:
+        update = input("Update to the latest version from GitHub? (Y/n): ")
+        if update.lower() in ["y", "yes", ""]:
+            update_application()
+else:
+    print("Unable to determine the current version.")
 
 if __name__ == "__main__":
     initialize_app()

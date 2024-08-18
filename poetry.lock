@@ -142,74 +142,6 @@ files = [
 ]
 
 [[package]]
-name = "colorama"
-version = "0.4.6"
-description = "Cross-platform colored terminal text."
-optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
-files = [
-    {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
-    {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
-]
-
-[[package]]
-name = "django"
-version = "1.10.8"
-description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
-optional = false
-python-versions = "*"
-files = [
-    {file = "Django-1.10.8-py2.py3-none-any.whl", hash = "sha256:ffdc7e938391ae3c2ee8ff82e0b4444e4e6bb15c99d00770285233d42aaf33d6"},
-    {file = "Django-1.10.8.tar.gz", hash = "sha256:d4ef83bd326573c00972cb9429beb396d210341a636e4b816fc9b3f505c498bb"},
-]
-
-[package.extras]
-argon2 = ["argon2-cffi (>=16.1.0)"]
-bcrypt = ["bcrypt"]
-
-[[package]]
-name = "django-classy-tags"
-version = "0.8.0"
-description = "Class based template tags for Django"
-optional = false
-python-versions = "*"
-files = [
-    {file = "django-classy-tags-0.8.0.tar.gz", hash = "sha256:792f9161d0e22d55b4fab6fc297bab8ab072ffaa3075b227613a6d8473624db8"},
-    {file = "django_classy_tags-0.8.0-py2.py3-none-any.whl", hash = "sha256:f6d12f5a4df3e387795a0d9ef2836af389cae9a1fbebda035dac043d4722b1f7"},
-]
-
-[package.dependencies]
-Django = ">1.3"
-
-[[package]]
-name = "django-sekizai"
-version = "0.10.0"
-description = "Django Sekizai"
-optional = false
-python-versions = "*"
-files = [
-    {file = "django-sekizai-0.10.0.tar.gz", hash = "sha256:39c5d16ad694aa78278ca84fdc7b9f953ebcf94e2fc95b68c875d02014303260"},
-    {file = "django_sekizai-0.10.0-py2.py3-none-any.whl", hash = "sha256:cbd48e7be29e8cc4108476b9420d7c391fc509a504bc20b60616b116ba6ea51e"},
-]
-
-[package.dependencies]
-django-classy-tags = ">=0.3.1"
-
-[[package]]
-name = "foundation"
-version = "0.1.0a0.dev1"
-description = "A generic website backend implemented in Django using Controllers."
-optional = false
-python-versions = "*"
-files = [
-    {file = "foundation-0.1.0a0.dev1.tar.gz", hash = "sha256:ee9900cf0492db3388a6c2815153bc7f28009239717278fd798a0767ea1d001e"},
-]
-
-[package.dependencies]
-Django = ">=1.10,<1.11"
-django-sekizai = ">=0.10"
-
-[[package]]
 name = "h11"
 version = "0.14.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
@@ -519,16 +451,6 @@ files = [
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
-name = "pyperclip"
-version = "1.9.0"
-description = "A cross-platform clipboard module for Python. (Only handles plain text for now.)"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pyperclip-1.9.0.tar.gz", hash = "sha256:b7de0142ddc81bfc5c7507eea19da920b92252b548b96186caf94a5e2527d310"},
-]
-
-[[package]]
 name = "pyqt5"
 version = "5.15.11"
 description = "Python bindings for the Qt cross platform application toolkit"
@@ -639,24 +561,15 @@ files = [
 ]
 
 [[package]]
-name = "tqdm"
-version = "4.66.5"
-description = "Fast, Extensible Progress Meter"
+name = "toml"
+version = "0.10.2"
+description = "Python Library for Tom's Obvious, Minimal Language"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 files = [
-    {file = "tqdm-4.66.5-py3-none-any.whl", hash = "sha256:90279a3770753eafc9194a0364852159802111925aa30eb3f9d85b0e805ac7cd"},
-    {file = "tqdm-4.66.5.tar.gz", hash = "sha256:e1020aef2e5096702d8a025ac7d16b1577279c9d63f8375b63083e9a5f0fcbad"},
+    {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
+    {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
 ]
-
-[package.dependencies]
-colorama = {version = "*", markers = "platform_system == \"Windows\""}
-
-[package.extras]
-dev = ["pytest (>=6)", "pytest-cov", "pytest-timeout", "pytest-xdist"]
-notebook = ["ipywidgets (>=6)"]
-slack = ["slack-sdk"]
-telegram = ["requests"]
 
 [[package]]
 name = "typing-extensions"
@@ -689,4 +602,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "d09192ac8b72662bdd1c26455d5388eb4a5bfcc7ee407ba54a71b863524ae6da"
+content-hash = "c68526ba1f884875ba54b6be62d81e326833d193688defbc394adc784ff6c4c1"
