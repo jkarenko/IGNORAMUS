@@ -690,12 +690,66 @@ class ImageGeneratorGUI:
                                             command=lambda: self.set_widgets_and_close(metadata, top))
             set_widgets_button.pack(side=tk.BOTTOM, padx=5, pady=5)
 
+            # Create an Upscale button
+            upscale_button = ttk.Button(frame, text="🔍 Upscale",
+                                        command=lambda: self.upscale_image(img_path, metadata, top))
+            upscale_button.pack(side=tk.BOTTOM, padx=5, pady=5)
+
         # Bind click event to close the window
         canvas.bind("<Button-1>", lambda e: top.destroy())
 
         # Initial resize
         top.update_idletasks()  # Ensure the window size is updated
         top.after(100, resize_image)  # Schedule the initial resize after a short delay
+
+    def upscale_image(self, img_path, metadata, window):
+        # Perform upscaling
+        upscaled_data = upscale_image(img_path)
+
+        if upscaled_data:
+            # Generate a new filename for the upscaled image
+            base_name, ext = os.path.splitext(img_path)
+            upscaled_path = f"{base_name}_upscaled{ext}"
+
+            # Save the upscaled image
+            with open(upscaled_path, "wb") as upscaled_file:
+                upscaled_file.write(upscaled_data)
+
+            # Update metadata
+            metadata["upscaled"] = True
+
+            # Convert metadata to a JSON string
+            metadata_json = json.dumps(metadata)
+
+            # Create or update EXIF data
+            try:
+                img = Image.open(upscaled_path)
+                exif_dict = piexif.load(img.info.get("exif", b""))
+            except (KeyError, ValueError, FileNotFoundError):
+                exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+
+            # Add metadata to EXIF
+            user_comment = piexif.helper.UserComment.dump(metadata_json)
+            exif_dict["Exif"][piexif.ExifIFD.UserComment] = user_comment
+
+            # Convert EXIF dict to bytes
+            exif_bytes = piexif.dump(exif_dict)
+
+            # Save the image with updated EXIF data
+            img.save(upscaled_path, "JPEG", exif=exif_bytes, quality=95)
+
+            # Close the current window and open the new upscaled image
+            window.destroy()
+            self.open_full_size_image(upscaled_path)
+
+            # Refresh the gallery
+            self.load_images_from_results()
+
+            # Show a success message
+            tk.messagebox.showinfo("Upscale Complete", f"Image upscaled and saved as {os.path.basename(upscaled_path)}")
+        else:
+            # Show an error message if upscaling failed
+            tk.messagebox.showerror("Upscale Failed", "Failed to upscale the image.")
 
     def delete_image(self, img_path, window):
         # Ask for confirmation
