@@ -5,6 +5,7 @@ import os
 import platform
 import random
 import subprocess
+import sys
 import time
 import tkinter as tk
 from time import perf_counter
@@ -20,7 +21,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication
 
 from ignoramus.upscaler import upscale_image
-from ignoramus.version_checker import get_current_version, check_latest_version, update_application
+from ignoramus.version_checker import get_current_version, check_latest_version, update_application, restart_application
 
 
 def focus_previous_widget(event):
@@ -854,18 +855,21 @@ def initialize_app():
             f"ERROR: REPLICATE_API_TOKEN not set and {token_file} not found. Please set the environment variable or create {token_file} with your Replicate API token.")
 
 
-if current_version := get_current_version():
-    is_latest, message = check_latest_version(current_version)
-    print(message)
-    if not is_latest:
-        update = input("Update to the latest version from GitHub? (Y/n): ")
-        if update.lower() in ["y", "yes", ""]:
-            update_application()
-else:
-    print("Unable to determine the current version.")
+def check_updates():
+    if current_version := get_current_version():
+        is_latest, message = check_latest_version(current_version)
+        print(message)
+        if not is_latest:
+            update = input("Update to the latest version from GitHub? (Y/n): ")
+            if update.lower() in ["y", "yes", ""]:
+                update_application()
+                restart_application()
+    else:
+        print("Unable to determine the current version.")
 
 
 def main():
+    check_updates()
     initialize_app()
     root = tk.Tk()
     gui = ImageGeneratorGUI(root)

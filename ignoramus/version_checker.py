@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import tomllib as toml
 
 import requests
@@ -81,10 +82,26 @@ def _extracted_from_check_latest_version_21(tags_url, headers, current_version):
 
 
 def update_application():
-    result = subprocess.run(["git", "pull"], capture_output=True, text=True)
-    if result.returncode == 0:
-        print("Update successful")
-        print(result.stdout)
+    update_files = subprocess.run(["git", "pull"], capture_output=True, text=True)
+    if update_files.returncode == 0:
+        print("Updated files successfully")
+        print(update_files.stdout)
     else:
-        print("Update failed")
-        print(result.stderr)
+        print("Update failed, check output below")
+        print(update_files.stderr)
+        sys.exit(1)
+
+    # Install dependencies
+    install_deps = subprocess.run(["poetry", "install"], capture_output=True, text=True)
+    if install_deps.returncode == 0:
+        print("Dependencies installed successfully")
+        print(install_deps.stdout)
+    else:
+        print("Dependency installation failed, check output below")
+        print(install_deps.stderr)
+        sys.exit(1)
+
+
+def restart_application():
+    print("Restarting application...")
+    os.execl(sys.executable, "poetry run", "ignoramus")
