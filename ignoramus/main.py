@@ -19,8 +19,8 @@ from PIL import ImageTk
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication
 
-from upscaler import upscale_image
-from version_checker import get_current_version, check_latest_version, update_application
+from ignoramus.upscaler import upscale_image
+from ignoramus.version_checker import get_current_version, check_latest_version, update_application
 
 
 def focus_previous_widget(event):
@@ -864,8 +864,13 @@ if current_version := get_current_version():
 else:
     print("Unable to determine the current version.")
 
-if __name__ == "__main__":
+
+def main():
     initialize_app()
     root = tk.Tk()
     gui = ImageGeneratorGUI(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

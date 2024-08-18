@@ -26,3 +26,5 @@ build-backend = "poetry.core.masonry.api"
 homepage = "https://github.com/jkarenko/IGNORAMUS"
 repo_api = "https://api.github.com/repos/jkarenko/IGNORAMUS/git"
 
+[tool.poetry.scripts]
+ignoramus = "ignoramus.main:main"

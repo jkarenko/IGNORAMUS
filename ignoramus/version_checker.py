@@ -1,7 +1,9 @@
+import os
+import subprocess
+import tomllib as toml
+
 import requests
 from packaging import version
-import tomllib as toml
-import os
 
 
 def get_pyproject_data():
@@ -10,7 +12,7 @@ def get_pyproject_data():
         script_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Construct the path to pyproject.toml
-        pyproject_path = os.path.join(script_dir, 'pyproject.toml')
+        pyproject_path = os.path.join(script_dir, '../pyproject.toml')
 
         # Read the pyproject.toml file
         with open(pyproject_path, 'rb') as f:
@@ -26,9 +28,8 @@ def get_current_version():
     pyproject_data = get_pyproject_data()
     if pyproject_data and 'tool' in pyproject_data and 'poetry' in pyproject_data['tool']:
         return pyproject_data['tool']['poetry']['version']
-    else:
-        print("Version information not found in pyproject.toml")
-        return None
+    print("Version information not found in pyproject.toml")
+    return None
 
 
 def check_latest_version(current_version):
@@ -41,28 +42,20 @@ def check_latest_version(current_version):
     # Get GitHub token from environment variable
     github_token = os.environ.get('GITHUB_TOKEN')
 
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28"
-    }
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
     if github_token:
         headers["Authorization"] = f"Bearer {github_token}"
 
     try:
-        return _extracted_from_check_latest_version_21(
-            tags_url, headers, current_version
-        )
+        return _extracted_from_check_latest_version_21(tags_url, headers, current_version)
     except requests.RequestException as e:
         if not isinstance(e, requests.HTTPError):
             return False, f"Error checking for updates: {str(e)}"
         if e.response.status_code == 401:
             return False, "Error: Authentication failed. Please check your GitHub token."
         elif e.response.status_code == 404:
-            return (
-                False,
-                "Error: Repository or tags not found. Please check the repository URL.",
-            )
+            return (False, "Error: Repository or tags not found. Please check the repository URL.",)
         else:
             return False, f"HTTP Error: {e.response.status_code} - {e.response.reason}"
 
@@ -81,18 +74,10 @@ def _extracted_from_check_latest_version_21(tags_url, headers, current_version):
     versions = [tag['ref'].split("/v")[1] for tag in tags]
     latest_version = max(versions, key=version.parse)
 
-        # Compare the current version with the latest version
-    return (
-        (True, f"You are running the latest version ({current_version})")
-        if version.parse(current_version) >= version.parse(latest_version)
-        else (
-            False,
-            f"A newer version is available: {latest_version} (you are running {current_version})",
-        )
-    )
-
-
-import subprocess
+    # Compare the current version with the latest version
+    return ((True, f"You are running the latest version ({current_version})") if version.parse(
+        current_version) >= version.parse(latest_version) else (
+        False, f"A newer version is available: {latest_version} (you are running {current_version})",))
 
 
 def update_application():
