@@ -85,10 +85,26 @@ def copy_image_to_clipboard(img_path):
 
 
 def create_exif_metadata(properties, model):
-    properties["model"] = model
-    metadata = json.dumps(properties)
-    user_comment = piexif.helper.UserComment.dump(metadata)
-    return {"Exif": {piexif.ExifIFD.UserComment: user_comment}}
+    # Create a copy of properties to avoid modifying the original
+    metadata = properties.copy()
+
+    # Remove any large data fields that shouldn't be in EXIF
+    metadata.pop('image', None)  # Remove the image data if present
+
+    # Add the model information
+    metadata["model"] = model
+
+    # Convert the metadata to a JSON string
+    metadata_json = json.dumps(metadata)
+
+    # Create the EXIF dictionary
+    exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+
+    # Add the metadata as a UserComment
+    user_comment = piexif.helper.UserComment.dump(metadata_json)
+    exif_dict["Exif"][piexif.ExifIFD.UserComment] = user_comment
+
+    return exif_dict
 
 
 def save_image_with_metadata(img, file_name, exif_dict):
