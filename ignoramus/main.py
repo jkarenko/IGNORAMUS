@@ -5,9 +5,9 @@ import os
 import platform
 import random
 import subprocess
+import threading
 import time
 import tkinter as tk
-import threading
 from time import perf_counter
 from tkinter import ttk, filedialog
 
@@ -158,6 +158,7 @@ def process_generated_images(output, current_time, results_dir, properties, mode
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.generate_frame = None
         self.sliders = None
         self.full_size_image = None
         self.gallery_tab = None
@@ -176,6 +177,8 @@ class ImageGeneratorGUI:
         self.prompt_text = None
         self.model_combo = None
         self.model_var = None
+        self.is_generating = False
+        self.progress_bar = None
         self.master = master
         master.title("IGNORAMUS")
         master.geometry("1200x900")
@@ -217,9 +220,17 @@ class ImageGeneratorGUI:
         self.param_frame = ttk.Frame(left_frame)
         self.param_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="we")
 
+        # Frame for Generate button and progress bar
+        self.generate_frame = ttk.Frame(left_frame)
+        self.generate_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky="we")
+
         # Generate button
-        self.generate_button = ttk.Button(left_frame, text="Generate Image", command=self.generate_image)
-        self.generate_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+        self.generate_button = ttk.Button(self.generate_frame, text="Generate Image", command=self.generate_image)
+        self.generate_button.pack(fill=tk.X)
+
+        # Progress bar (initially hidden)
+        self.progress_bar = ttk.Progressbar(self.generate_frame, mode='indeterminate',
+                                            style="red.Horizontal.TProgressbar")
 
         # Output
         self.output_text = tk.Text(left_frame, height=20, width=70, state="disabled")
@@ -402,7 +413,9 @@ class ImageGeneratorGUI:
                             min_val, max_val, step = 0, 100, 1
 
                     style = ttk.Style()
+                    style.theme_use("aqua")
                     style.configure("Value.TLabel", anchor="e", width=6)
+                    style.configure("blue.Horizontal.TProgressbar", troughcolor='lightgray', background='blue')
 
                     format_string = ".2f" if step < 0.1 else (".1f" if step < 1 else "d")
                     value_label = ttk.Label(slider_frame, text=f"{var.get():{format_string}}", style="Value.TLabel")
@@ -453,6 +466,9 @@ class ImageGeneratorGUI:
             self.model_specific_vars["dev"]["image_path"].set(filename)
 
     def generate_image(self):
+        if self.is_generating:
+            return  # Prevent multiple generations
+
         model = self.model_var.get()
         prompt_text = self.prompt_text.get("1.0", tk.END).strip()
 
@@ -490,20 +506,25 @@ class ImageGeneratorGUI:
         self.output_text.insert(tk.END, "\n")
         self.master.update_idletasks()
 
-        # Show loading screen
-        loading_screen = self.show_loading_screen()
-
         # Start the image generation in a separate thread
-        thread = threading.Thread(target=self._generate_image_task, args=(model, properties, loading_screen))
+        self.is_generating = True
+        self.update_generate_button()
+        thread = threading.Thread(target=self._generate_image_task, args=(model, properties))
         thread.start()
 
     def show_loading_screen(self):
-        # Create a Toplevel window that covers the entire main window
+        # Get the position and size of the output text box
+        text_box = self.output_text
+        x = text_box.winfo_rootx() - self.master.winfo_rootx()
+        y = text_box.winfo_rooty() - self.master.winfo_rooty()
+        width = text_box.winfo_width()
+        height = text_box.winfo_height()
+
+        # Create a Toplevel window that covers only the output text box
         loading_screen = tk.Toplevel(self.master)
-        loading_screen.geometry(
-            f"{self.master.winfo_width()}x{self.master.winfo_height()}+{self.master.winfo_x()}+{self.master.winfo_y()}")
+        loading_screen.geometry(f"{width}x{height}+{x}+{y}")
         loading_screen.overrideredirect(True)  # Remove window decorations
-        loading_screen.attributes("-alpha", 0.5)  # Set transparency
+        loading_screen.attributes("-alpha", 0.7)  # Set transparency
         loading_screen.attributes("-topmost", True)  # Ensure it's on top
 
         # Create a frame to hold the loading message
@@ -511,13 +532,13 @@ class ImageGeneratorGUI:
         frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Add a label to display the loading message
-        loading_label = ttk.Label(frame, text="Generating image...", font=("Helvetica", 50), background="white")
+        loading_label = ttk.Label(frame, text="Generating...", font=("Helvetica", 14), background="white")
         loading_label.pack(expand=True)
 
         loading_screen.update_idletasks()
         return loading_screen
 
-    def _generate_image_task(self, model, properties, loading_screen):
+    def _generate_image_task(self, model, properties):
         time_start = perf_counter()
 
         try:
@@ -536,7 +557,19 @@ class ImageGeneratorGUI:
 
         finally:
             self.master.after(0, lambda: self.output_text.config(state="disabled"))
-            self.master.after(0, loading_screen.destroy)
+            self.is_generating = False
+            self.master.after(0, self.update_generate_button)
+
+    def update_generate_button(self):
+        if self.is_generating:
+            self.generate_button.pack_forget()
+            self.progress_bar.pack(fill=tk.X)
+            self.progress_bar.start(10)  # Start the progress bar animation
+        else:
+            self.progress_bar.stop()  # Stop the progress bar animation
+            self.progress_bar.pack_forget()
+            self.generate_button.pack(fill=tk.X)
+        self.master.update_idletasks()
 
     def setup_keyboard_shortcuts(self):
         self.master.bind("<Tab>", focus_next_widget)
