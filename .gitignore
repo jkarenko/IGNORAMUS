@@ -1,2 +1,6 @@
 /results
 /token.txt
+
+.python-version
+__pycache__/
+ignoramus/__pycache__/
