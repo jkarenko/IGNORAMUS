@@ -90,7 +90,11 @@ class ImageGeneratorGUI:
         # Add model-specific properties
         model = self.model_var.get()
         for key, var in self.model_specific_vars[model].items():
-            properties[key] = var.get()
+            if key == "image_path":
+                if var.get():
+                    properties[key] = var.get()
+            else:
+                properties[key] = var.get()
 
         return properties
 

@@ -1,3 +1,4 @@
+import base64
 import datetime
 import json
 import os
@@ -15,6 +16,13 @@ def generate_image(model, properties):
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
     results_dir = get_output_directory()
     try:
+        # Check if image_path is in properties and handle it
+        if "image_path" in properties and properties["image_path"]:
+            with open(properties["image_path"], "rb") as image_file:
+                encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+            properties["image"] = f"data:image/jpeg;base64,{encoded_image}"
+            del properties["image_path"]  # Remove image_path from properties
+
         output = replicate.run(f"black-forest-labs/flux-{model}", input=properties)
         return output, current_time, results_dir
     except Exception:
@@ -30,6 +38,11 @@ def get_output_directory():
 def create_exif_metadata(properties, model):
     metadata = properties.copy()
     metadata["model"] = model
+
+    # Remove the 'image' key from metadata to prevent EXIF data from being too long
+    if 'image' in metadata:
+        del metadata['image']
+
     metadata_json = json.dumps(metadata)
     exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
     user_comment = piexif.helper.UserComment.dump(metadata_json)
