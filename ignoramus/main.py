@@ -233,7 +233,7 @@ class ImageGeneratorGUI:
 
     def browse_face_image(self):
         if filename := filedialog.askopenfilename(
-            filetypes=[("Image files", "*.jpg *.jpeg *.png")]
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.webp *.webm")]
         ):
             self.face_image_path.set(filename)
 
@@ -381,7 +381,7 @@ class ImageGeneratorGUI:
 
     def browse_image(self):
         if filename := tk.filedialog.askopenfilename(
-                filetypes=[("Image files", "*.jpg *.jpeg *.png *.webm")]
+                filetypes=[("Image files", "*.jpg *.jpeg *.png *.webm *.webp")]
         ):
             self.model_specific_vars["dev"]["image_path"].set(filename)
 
@@ -566,7 +566,7 @@ class ImageGeneratorGUI:
 
         # Get list of image files, sorted by modification time (newest first)
         image_files = sorted(
-            [f for f in os.listdir(results_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))],
+            [f for f in os.listdir(results_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', ".webp", ".webm"))],
             key=lambda x: os.path.getmtime(os.path.join(results_folder, x)),
             reverse=True
         )

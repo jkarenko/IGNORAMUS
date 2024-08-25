@@ -45,8 +45,8 @@ def read_image_metadata(file_path):
         user_comment = exif_dict["Exif"][piexif.ExifIFD.UserComment]
         metadata = piexif.helper.UserComment.load(user_comment)
         return json.loads(metadata)
-    except (KeyError, json.JSONDecodeError):
-        return None
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return {"comment": "Image imported from outside of IGNORAMUS."}
 
 
 def open_file_location(file_path):
