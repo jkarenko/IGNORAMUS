@@ -12,9 +12,9 @@ def upscale_image(image_path):
         input_data = {
             "image": f"data:image/png;base64,{encoded_string}",
             "upscale": 2,
-            "face_upsample": True,
-            "background_enhance": True,
-            "codeformer_fidelity": 0.5
+            "face_upsample": False,
+            "background_enhance": False,
+            "codeformer_fidelity": 0.98
         }
 
         if not (
