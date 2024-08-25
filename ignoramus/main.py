@@ -39,6 +39,10 @@ class ImageGeneratorGUI:
         self.model_var = None
         self.is_generating = False
         self.progress_bar = None
+        self.last_modified_time = 0
+        self.update_thread = None
+        self.update_lock = threading.Lock()
+        self.start_gallery_update_thread()
         self.master = master
         master.title("IGNORAMUS")
         master.geometry("1200x900")
@@ -53,6 +57,31 @@ class ImageGeneratorGUI:
         self.create_widgets()
         self.setup_keyboard_shortcuts()
         self.create_gallery()
+
+    def start_gallery_update_thread(self):
+        self.update_thread = threading.Thread(target=self.periodic_gallery_update, daemon=True)
+        self.update_thread.start()
+
+    def periodic_gallery_update(self):
+        while True:
+            time.sleep(3)  # Wait for 3 seconds
+            self.check_and_update_gallery()
+
+    def check_and_update_gallery(self):
+        results_folder = "results"
+        if not os.path.exists(results_folder):
+            return
+
+        with self.update_lock:
+            latest_modified_time = max(
+                os.path.getmtime(os.path.join(results_folder, f))
+                for f in os.listdir(results_folder)
+                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'))
+            )
+
+            if latest_modified_time > self.last_modified_time:
+                self.last_modified_time = latest_modified_time
+                self.master.after(0, self.load_images_from_results)
 
     def generate_image_keyboard(self):
         # Workaround: Erase the newline character added by the Enter key
@@ -565,30 +594,17 @@ class ImageGeneratorGUI:
         if not os.path.exists(results_folder):
             return
 
-        # Clear existing images
-        for widget in self.gallery_images_frame.winfo_children():
-            widget.destroy()
-
-        # Convert all WebP images to JPG
-        for filename in os.listdir(results_folder):
-            if filename.lower().endswith('.webp'):
-                webp_path = os.path.join(results_folder, filename)
-                jpg_path = os.path.join(results_folder, os.path.splitext(filename)[0] + '.jpg')
-                try:
-                    with Image.open(webp_path) as img:
-                        img = img.convert('RGB')
-                        img.save(jpg_path, 'JPEG', quality=95)
-                    os.remove(webp_path)
-                    print(f"Converted {filename} to JPG")
-                except Exception as e:
-                    print(f"Error converting {filename}: {str(e)}")
-
         # Get list of image files, sorted by modification time (newest first)
         image_files = sorted(
-            [f for f in os.listdir(results_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))],
+            [f for f in os.listdir(results_folder) if
+             f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'))],
             key=lambda x: os.path.getmtime(os.path.join(results_folder, x)),
             reverse=True
         )
+
+        # Clear existing images
+        for widget in self.gallery_images_frame.winfo_children():
+            widget.destroy()
 
         row, col = 0, 0
         for img_file in image_files:
@@ -599,6 +615,14 @@ class ImageGeneratorGUI:
                 col = 0
                 row += 1
 
+        self.gallery_images_frame.update_idletasks()
+        self.gallery_canvas.config(scrollregion=self.gallery_canvas.bbox("all"))
+
+    def _clear_gallery(self):
+        for widget in self.gallery_images_frame.winfo_children():
+            widget.destroy()
+
+    def _update_gallery_scrollregion(self):
         self.gallery_images_frame.update_idletasks()
         self.gallery_canvas.config(scrollregion=self.gallery_canvas.bbox("all"))
 
