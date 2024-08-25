@@ -8,12 +8,15 @@ from tkinter import ttk, filedialog
 import piexif.helper
 from PIL import ImageTk
 
+from ignoramus.upscaler import upscale_image
 from ignoramus.utils import *
 from ignoramus.version_checker import check_updates
+from ignoramus.image_generator import generate_image, process_generated_images
 
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.generate_image = None
         self.generate_frame = None
         self.sliders = None
         self.full_size_image = None
@@ -326,53 +329,6 @@ class ImageGeneratorGUI:
         ):
             self.model_specific_vars["dev"]["image_path"].set(filename)
 
-    def generate_image(self):
-        if self.is_generating:
-            return  # Prevent multiple generations
-
-        model = self.model_var.get()
-        prompt_text = self.prompt_text.get("1.0", tk.END).strip()
-
-        if self.common_vars["randomize_seed"].get():
-            self.common_vars["seed"].set(random.randint(0, 2 ** 32 - 1))
-
-        properties = {
-            "prompt": prompt_text,
-            "seed": self.common_vars["seed"].get(),
-            **{k: v.get() for k, v in self.common_vars.items() if k not in ["seed", "randomize_seed"]},
-            **{k: v.get() for k, v in self.model_specific_vars[model].items() if k != "image_path"}
-        }
-
-        if model == "dev" and self.model_specific_vars["dev"]["image_path"].get():
-            image_path = self.model_specific_vars["dev"]["image_path"].get()
-            try:
-                with open(image_path, "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                properties["image"] = f"data:image/png;base64,{encoded_string}"
-            except FileNotFoundError:
-                self.output_text.config(state="normal")
-                self.output_text.insert(tk.END, f"Image file not found at path: {image_path}\n")
-                self.output_text.config(state="disabled")
-                return
-
-        self.output_text.config(state="normal")
-        self.output_text.delete("1.0", tk.END)
-        self.output_text.insert(tk.END, f"Generating image with {model} model...\n")
-        self.output_text.insert(tk.END, "Properties:\n")
-        for key, value in properties.items():
-            if key == "image":
-                self.output_text.insert(tk.END, f"  {key}: [base64 encoded image]\n")
-            else:
-                self.output_text.insert(tk.END, f"  {key}: {value}\n")
-        self.output_text.insert(tk.END, "\n")
-        self.master.update_idletasks()
-
-        # Start the image generation in a separate thread
-        self.is_generating = True
-        self.update_generate_button()
-        thread = threading.Thread(target=self._generate_image_task, args=(model, properties))
-        thread.start()
-
     def show_loading_screen(self):
         # Get the position and size of the output text box
         text_box = self.output_text
@@ -405,12 +361,13 @@ class ImageGeneratorGUI:
         try:
             output, current_time, results_dir = generate_image(model, properties)
 
-            self.master.after(0, lambda: process_generated_images(output, current_time, results_dir, properties, model,
-                                                                  self.output_text))
+            processed_images = process_generated_images(output, current_time, results_dir, properties, model)
+
+            self.master.after(0, lambda: self.update_output_text(processed_images))
 
             time_stop = perf_counter()
             self.master.after(0, lambda: self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n"))
-            self.master.after(0, lambda: self.output_text.insert(tk.END, "Image generation and upscaling complete!\n"))
+            self.master.after(0, lambda: self.output_text.insert(tk.END, "Image generation and processing complete!\n"))
             self.master.after(0, self.load_images_from_results)
 
         except Exception as e:
@@ -420,6 +377,14 @@ class ImageGeneratorGUI:
             self.master.after(0, lambda: self.output_text.config(state="disabled"))
             self.is_generating = False
             self.master.after(0, self.update_generate_button)
+
+    def update_output_text(self, processed_images):
+        for image in processed_images:
+            self.output_text.insert(tk.END, f"Saved image: {image['file_name']}\n")
+            if image['upscaled']:
+                self.output_text.insert(tk.END, "Image upscaled successfully.\n")
+            else:
+                self.output_text.insert(tk.END, "Upscaling skipped or failed.\n")
 
     def update_generate_button(self):
         if self.is_generating:
