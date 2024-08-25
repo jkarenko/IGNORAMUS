@@ -8,6 +8,7 @@ import piexif.helper
 from PIL import Image
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication
+import numpy as np
 
 from ignoramus.image_generator import fetch_and_save_image, create_exif_metadata, save_image_with_metadata, \
     handle_upscaling
@@ -62,9 +63,17 @@ def open_file_location(file_path):
 def copy_image_to_clipboard(img_path):
     try:
         pil_image = Image.open(img_path)
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
-        qimage = QImage(pil_image.tobytes(), pil_image.width, pil_image.height, QImage.Format_RGB888)
+        if pil_image.mode != 'RGBA':
+            pil_image = pil_image.convert('RGBA')
+
+        # Convert PIL image to numpy array
+        numpy_image = np.array(pil_image)
+
+        # Create QImage with correct format and byte order
+        height, width, channel = numpy_image.shape
+        bytes_per_line = 4 * width
+        qimage = QImage(numpy_image.data, width, height, bytes_per_line, QImage.Format_RGBA8888)
+
         app = QApplication.instance() or QApplication([])
         pixmap = QPixmap.fromImage(qimage)
         clipboard = app.clipboard()

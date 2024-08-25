@@ -17,6 +17,7 @@ pyqt5-qt5 = "^5.15.2"
 pyqt5_sip = "^12.15.0"
 
 
+numpy = "^2.1.0"
 [tool.poetry.group.dev.dependencies]
 bump2version = "^1.0.1"
 

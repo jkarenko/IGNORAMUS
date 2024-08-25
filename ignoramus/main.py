@@ -564,9 +564,23 @@ class ImageGeneratorGUI:
         for widget in self.gallery_images_frame.winfo_children():
             widget.destroy()
 
+        # Convert all WebP images to JPG
+        for filename in os.listdir(results_folder):
+            if filename.lower().endswith('.webp'):
+                webp_path = os.path.join(results_folder, filename)
+                jpg_path = os.path.join(results_folder, os.path.splitext(filename)[0] + '.jpg')
+                try:
+                    with Image.open(webp_path) as img:
+                        img = img.convert('RGB')
+                        img.save(jpg_path, 'JPEG', quality=95)
+                    os.remove(webp_path)
+                    print(f"Converted {filename} to JPG")
+                except Exception as e:
+                    print(f"Error converting {filename}: {str(e)}")
+
         # Get list of image files, sorted by modification time (newest first)
         image_files = sorted(
-            [f for f in os.listdir(results_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', ".webp", ".webm"))],
+            [f for f in os.listdir(results_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))],
             key=lambda x: os.path.getmtime(os.path.join(results_folder, x)),
             reverse=True
         )
@@ -584,21 +598,25 @@ class ImageGeneratorGUI:
         self.gallery_canvas.config(scrollregion=self.gallery_canvas.bbox("all"))
 
     def add_image_to_gallery(self, img_path, row, col):
-        # Open the image and create a thumbnail
-        with Image.open(img_path) as img:
-            img.thumbnail((100, 100))  # Resize image to fit in the gallery
-            photo = ImageTk.PhotoImage(img)
+        try:
+            # Open the image and create a thumbnail
+            with Image.open(img_path) as img:
+                img.thumbnail((100, 100))  # Resize image to fit in the gallery
+                photo = ImageTk.PhotoImage(img)
 
-        # Create a label with the image and add it to the gallery
-        label = ttk.Label(self.gallery_images_frame, image=photo)
-        label.image = photo  # Keep a reference to prevent garbage collection
-        label.grid(row=row, column=col, padx=5, pady=5)
+            # Create a label with the image and add it to the gallery
+            label = ttk.Label(self.gallery_images_frame, image=photo)
+            label.image = photo  # Keep a reference to prevent garbage collection
+            label.grid(row=row, column=col, padx=5, pady=5)
 
-        # Bind click event to open full-size image
-        label.bind("<Button-1>", lambda e, path=img_path: self.open_full_size_image(path))
+            # Bind click event to open full-size image
+            label.bind("<Button-1>", lambda e, path=img_path: self.open_full_size_image(path))
 
-        # Bind mousewheel event to the label
-        self._bind_mousewheel(label)
+            # Bind mousewheel event to the label
+            self._bind_mousewheel(label)
+        except Exception as e:
+            print(f"Error adding image to gallery: {img_path}")
+            print(f"Error details: {str(e)}")
 
     def open_full_size_image(self, img_path):
         # Open the full-size image in a new window
