@@ -12,12 +12,11 @@ from ignoramus.upscaler import upscale_image
 from ignoramus.utils import *
 from ignoramus.version_checker import check_updates
 from ignoramus.image_generator import generate_image, process_generated_images
+from ignoramus.face_swapper import add_face_swap_button
 
 
 class ImageGeneratorGUI:
     def __init__(self, master):
-        self.generate_image = None
-        self.generate_frame = None
         self.sliders = None
         self.full_size_image = None
         self.gallery_tab = None
@@ -53,6 +52,41 @@ class ImageGeneratorGUI:
         self.setup_keyboard_shortcuts()
         self.create_gallery()
 
+    def generate_image(self):
+        if self.is_generating:
+            return
+
+        self.is_generating = True
+        self.update_generate_button()
+
+        model = self.model_var.get()
+        properties = self.get_properties()
+
+        self.output_text.config(state="normal")
+        self.output_text.delete("1.0", tk.END)
+        self.output_text.insert(tk.END, "Generating image...\n")
+
+        threading.Thread(target=self._generate_image_task, args=(model, properties)).start()
+
+    def get_properties(self):
+        properties = {
+            "prompt": self.prompt_text.get("1.0", tk.END).strip(),
+        }
+
+        # Add common properties
+        for key, var in self.common_vars.items():
+            if key == "randomize_seed" and var.get():
+                properties["seed"] = random.randint(0, 2 ** 32 - 1)
+            else:
+                properties[key] = var.get()
+
+        # Add model-specific properties
+        model = self.model_var.get()
+        for key, var in self.model_specific_vars[model].items():
+            properties[key] = var.get()
+
+        return properties
+
     def create_widgets(self):
         # Create a main frame to hold everything
         main_frame = ttk.Frame(self.master)
@@ -64,7 +98,7 @@ class ImageGeneratorGUI:
 
         # Model selection
         ttk.Label(left_frame, text="Select Model:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        self.model_var = tk.StringVar(value="pro")
+        self.model_var = tk.StringVar(value="schnell")
         self.model_combo = ttk.Combobox(left_frame, textvariable=self.model_var, values=["pro", "dev", "schnell"],
                                         state="readonly")
         self.model_combo.grid(row=0, column=1, padx=10, pady=10, sticky="we")
@@ -356,25 +390,17 @@ class ImageGeneratorGUI:
         return loading_screen
 
     def _generate_image_task(self, model, properties):
-        time_start = perf_counter()
-
         try:
             output, current_time, results_dir = generate_image(model, properties)
-
             processed_images = process_generated_images(output, current_time, results_dir, properties, model)
 
             self.master.after(0, lambda: self.update_output_text(processed_images))
-
-            time_stop = perf_counter()
-            self.master.after(0, lambda: self.output_text.insert(tk.END, f"Time: {time_stop - time_start:.2f}s\n"))
-            self.master.after(0, lambda: self.output_text.insert(tk.END, "Image generation and processing complete!\n"))
             self.master.after(0, self.load_images_from_results)
 
         except Exception as e:
             self.master.after(0, lambda: self.output_text.insert(tk.END, f"Error: {str(e)}\n"))
 
         finally:
-            self.master.after(0, lambda: self.output_text.config(state="disabled"))
             self.is_generating = False
             self.master.after(0, self.update_generate_button)
 
@@ -600,6 +626,9 @@ class ImageGeneratorGUI:
             upscale_button = ttk.Button(button_frame, text="🔍 Upscale",
                                         command=lambda: self.upscale_image(img_path, metadata, top))
             upscale_button.pack(side=tk.TOP, padx=5, pady=5)
+
+            # Create a Face Swap button
+            add_face_swap_button(button_frame, img_path, "results", self.load_images_from_results)
 
             # Create a button to copy the image to clipboard
             copy_button = ttk.Button(button_frame, text="📋 Clipboard",
