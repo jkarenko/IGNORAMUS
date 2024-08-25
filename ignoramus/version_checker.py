@@ -102,6 +102,19 @@ def update_application():
         sys.exit(1)
 
 
+def check_updates():
+    if current_version := get_current_version():
+        is_latest, message = check_latest_version(current_version)
+        print(message)
+        if not is_latest:
+            update = input("Update to the latest version from GitHub? (Y/n): ")
+            if update.lower() in ["y", "yes", ""]:
+                update_application()
+                restart_application()
+    else:
+        print("Unable to determine the current version.")
+
+
 def restart_application():
     print("Restarting application...")
     os.execv(sys.executable, ["poetry", "run", "ignoramus"])

@@ -15,6 +15,22 @@ from PyQt5.QtWidgets import QApplication
 from ignoramus.upscaler import upscale_image
 
 
+def initialize_app():
+    if 'REPLICATE_API_TOKEN' in os.environ:
+        print("Replicate API token loaded from environment variable.")
+        return
+
+    token_file = './token.txt'
+    if os.path.exists(token_file):
+        with open(token_file, 'r') as file:
+            api_token = file.read().strip()
+        os.environ['REPLICATE_API_TOKEN'] = api_token
+        print("Replicate API token loaded from token.txt and set in environment variables.")
+    else:
+        print(
+            f"ERROR: REPLICATE_API_TOKEN not set and {token_file} not found. Please set the environment variable or create {token_file} with your Replicate API token.")
+
+
 def focus_next_widget(event):
     event.widget.tk_focusNext().focus()
     return "break"

@@ -9,7 +9,7 @@ import piexif.helper
 from PIL import ImageTk
 
 from ignoramus.utils import *
-from ignoramus.version_checker import get_current_version, check_latest_version, update_application, restart_application
+from ignoramus.version_checker import check_updates
 
 
 class ImageGeneratorGUI:
@@ -760,35 +760,6 @@ class ImageGeneratorGUI:
 
         # Update the UI
         self.master.update_idletasks()
-
-
-def initialize_app():
-    if 'REPLICATE_API_TOKEN' in os.environ:
-        print("Replicate API token loaded from environment variable.")
-        return
-
-    token_file = './token.txt'
-    if os.path.exists(token_file):
-        with open(token_file, 'r') as file:
-            api_token = file.read().strip()
-        os.environ['REPLICATE_API_TOKEN'] = api_token
-        print("Replicate API token loaded from token.txt and set in environment variables.")
-    else:
-        print(
-            f"ERROR: REPLICATE_API_TOKEN not set and {token_file} not found. Please set the environment variable or create {token_file} with your Replicate API token.")
-
-
-def check_updates():
-    if current_version := get_current_version():
-        is_latest, message = check_latest_version(current_version)
-        print(message)
-        if not is_latest:
-            update = input("Update to the latest version from GitHub? (Y/n): ")
-            if update.lower() in ["y", "yes", ""]:
-                update_application()
-                restart_application()
-    else:
-        print("Unable to determine the current version.")
 
 
 def main():
