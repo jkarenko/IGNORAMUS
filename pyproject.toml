@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "IGNORAMUS"
-version = "1.6.5"
+version = "1.6.6"
 description = ""
 authors = ["jkarenko <juho.karenko@gmail.com>"]
 readme = "README.md"
