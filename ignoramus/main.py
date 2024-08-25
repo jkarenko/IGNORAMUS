@@ -1,11 +1,10 @@
-import base64
 import random
 import threading
 import time
-from time import perf_counter
 from tkinter import ttk, filedialog
 
 import piexif.helper
+import requests
 from PIL import ImageTk
 
 from ignoramus.upscaler import upscale_image
@@ -13,6 +12,7 @@ from ignoramus.utils import *
 from ignoramus.version_checker import check_updates
 from ignoramus.image_generator import generate_image, process_generated_images
 from ignoramus.face_swapper import add_face_swap_button
+from ignoramus.face_swapper import face_swap
 
 
 class ImageGeneratorGUI:
@@ -223,6 +223,12 @@ class ImageGeneratorGUI:
         self.create_common_fields()
         self.create_model_specific_fields(model)
 
+    def browse_face_image(self):
+        if filename := filedialog.askopenfilename(
+            filetypes=[("Image files", "*.jpg *.jpeg *.png")]
+        ):
+            self.face_image_var.set(filename)
+
     def create_common_fields(self):
         row = 0
         for param, var in self.common_vars.items():
@@ -231,6 +237,15 @@ class ImageGeneratorGUI:
             if param == "upscale":
                 checkbutton = ttk.Checkbutton(self.param_frame, text="Upscale", variable=var)
                 checkbutton.grid(row=row, column=0, columnspan=2, padx=5, pady=5, sticky="w")
+                ttk.Label(self.param_frame, text="Use Face From:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
+                face_frame = ttk.Frame(self.param_frame)
+                face_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
+                self.face_image_var = tk.StringVar()
+                face_entry = ttk.Entry(face_frame, textvariable=self.face_image_var)
+                face_entry.pack(side=tk.LEFT, expand=True, fill=tk.X)
+                browse_button = ttk.Button(face_frame, text="Browse", command=self.browse_face_image)
+                browse_button.pack(side=tk.RIGHT)
+                row += 1
             else:
                 ttk.Label(self.param_frame, text=f"{param.replace('_', ' ').title()}:").grid(row=row, column=0, padx=5,
                                                                                              pady=5, sticky="w")
@@ -394,23 +409,66 @@ class ImageGeneratorGUI:
             output, current_time, results_dir = generate_image(model, properties)
             processed_images = process_generated_images(output, current_time, results_dir, properties, model)
 
+            # Perform face swap if a face image is specified
+            face_image_path = self.face_image_var.get()
+            if face_image_path:
+                for image in processed_images:
+                    swapped_output = face_swap(face_image_path, image['file_name'])
+                    if swapped_output:
+                        # Download and save the face-swapped image
+                        response = requests.get(swapped_output)
+                        if response.status_code == 200:
+                            # Save the face-swapped image temporarily
+                            temp_file = f"{image['file_name']}_temp.jpg"
+                            with open(temp_file, 'wb') as f:
+                                f.write(response.content)
+
+                            # Create EXIF metadata with original properties
+                            exif_dict = create_exif_metadata(properties, model)
+
+                            # Add face_swapped flag to the metadata
+                            metadata = json.loads(
+                                piexif.helper.UserComment.load(exif_dict["Exif"][piexif.ExifIFD.UserComment]))
+                            metadata["face_swapped"] = True
+                            exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
+                                json.dumps(metadata))
+
+                            exif_bytes = piexif.dump(exif_dict)
+
+                            # Open the temporary image, add EXIF, and save it to the original filename
+                            with Image.open(temp_file) as img:
+                                img.save(image['file_name'], exif=exif_bytes, quality=95)
+
+                            # Remove the temporary file
+                            os.remove(temp_file)
+
+                            image['face_swapped'] = True
+                        else:
+                            image['face_swapped'] = False
+                    else:
+                        image['face_swapped'] = False
+
             self.master.after(0, lambda: self.update_output_text(processed_images))
             self.master.after(0, self.load_images_from_results)
 
         except Exception as e:
-            self.master.after(0, lambda: self.output_text.insert(tk.END, f"Error: {str(e)}\n"))
+            error_message = f"Error: {str(e)}\n"
+            self.master.after(0, lambda: self.output_text.insert(tk.END, error_message))
 
         finally:
             self.is_generating = False
             self.master.after(0, self.update_generate_button)
-
     def update_output_text(self, processed_images):
         for image in processed_images:
             self.output_text.insert(tk.END, f"Saved image: {image['file_name']}\n")
-            if image['upscaled']:
+            if image.get('face_swapped'):
+                self.output_text.insert(tk.END, "Face swap applied successfully.\n")
+            elif 'face_swapped' in image:
+                self.output_text.insert(tk.END, "Face swap failed.\n")
+            if image.get('upscaled'):
                 self.output_text.insert(tk.END, "Image upscaled successfully.\n")
             else:
-                self.output_text.insert(tk.END, "Upscaling skipped or failed.\n")
+                self.output_text.insert(tk.END, "Done.\n")
 
     def update_generate_button(self):
         if self.is_generating:

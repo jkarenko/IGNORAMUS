@@ -29,7 +29,6 @@ def get_output_directory():
 
 def create_exif_metadata(properties, model):
     metadata = properties.copy()
-    metadata.pop('image', None)
     metadata["model"] = model
     metadata_json = json.dumps(metadata)
     exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
