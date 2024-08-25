@@ -17,6 +17,7 @@ from ignoramus.face_swapper import face_swap
 
 class ImageGeneratorGUI:
     def __init__(self, master):
+        self.face_image_path = tk.StringVar()
         self.sliders = None
         self.full_size_image = None
         self.gallery_tab = None
@@ -214,6 +215,7 @@ class ImageGeneratorGUI:
         }
 
     def update_parameter_fields(self, event=None):
+        current_face_image_path = self.face_image_path.get()
         for widget in self.param_frame.winfo_children():
             widget.destroy()
 
@@ -222,12 +224,13 @@ class ImageGeneratorGUI:
         model = self.model_var.get()
         self.create_common_fields()
         self.create_model_specific_fields(model)
+        self.face_image_path.set(current_face_image_path)
 
     def browse_face_image(self):
         if filename := filedialog.askopenfilename(
             filetypes=[("Image files", "*.jpg *.jpeg *.png")]
         ):
-            self.face_image_var.set(filename)
+            self.face_image_path.set(filename)
 
     def create_common_fields(self):
         row = 0
@@ -240,8 +243,7 @@ class ImageGeneratorGUI:
                 ttk.Label(self.param_frame, text="Use Face From:").grid(row=row, column=0, padx=5, pady=5, sticky="w")
                 face_frame = ttk.Frame(self.param_frame)
                 face_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
-                self.face_image_var = tk.StringVar()
-                face_entry = ttk.Entry(face_frame, textvariable=self.face_image_var)
+                face_entry = ttk.Entry(face_frame, textvariable=self.face_image_path)  # Use self.face_image_path
                 face_entry.pack(side=tk.LEFT, expand=True, fill=tk.X)
                 browse_button = ttk.Button(face_frame, text="Browse", command=self.browse_face_image)
                 browse_button.pack(side=tk.RIGHT)
@@ -410,7 +412,7 @@ class ImageGeneratorGUI:
             processed_images = process_generated_images(output, current_time, results_dir, properties, model)
 
             # Perform face swap if a face image is specified
-            face_image_path = self.face_image_var.get()
+            face_image_path = self.face_image_path.get()
             if face_image_path:
                 for image in processed_images:
                     swapped_output = face_swap(face_image_path, image['file_name'])
