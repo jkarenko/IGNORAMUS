@@ -3,9 +3,7 @@ import json
 import os
 import platform
 import subprocess
-
 import tkinter as tk
-
 import piexif
 import piexif.helper
 import replicate
