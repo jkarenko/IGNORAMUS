@@ -104,4 +104,4 @@ def update_application():
 
 def restart_application():
     print("Restarting application...")
-    os.execl(sys.executable, "poetry run", "ignoramus")
+    os.execv(sys.executable, ["poetry", "run", "ignoramus"])
