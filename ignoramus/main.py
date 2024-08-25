@@ -1,3 +1,4 @@
+import datetime
 import random
 import threading
 import time
@@ -10,7 +11,7 @@ from PIL import ImageTk
 from ignoramus.upscaler import upscale_image
 from ignoramus.utils import *
 from ignoramus.version_checker import check_updates
-from ignoramus.image_generator import generate_image, process_generated_images
+from ignoramus.image_generator import generate_image, process_generated_images, get_output_directory
 from ignoramus.face_swapper import add_face_swap_button
 from ignoramus.face_swapper import face_swap
 
@@ -746,8 +747,10 @@ class ImageGeneratorGUI:
     def upscale_image(self, img_path, metadata, window):
         if upscaled_data := upscale_image(img_path):
             # Generate a new filename for the upscaled image
-            base_name, ext = os.path.splitext(img_path)
-            upscaled_path = f"{base_name}_upscaled{ext}"
+            current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            results_dir = get_output_directory()
+            new_filename = f"img_{current_time}.jpg"
+            upscaled_path = os.path.join(results_dir, new_filename)
 
             # Save the upscaled image
             with open(upscaled_path, "wb") as upscaled_file:
@@ -760,11 +763,7 @@ class ImageGeneratorGUI:
             metadata_json = json.dumps(metadata)
 
             # Create or update EXIF data
-            try:
-                img = Image.open(upscaled_path)
-                exif_dict = piexif.load(img.info.get("exif", b""))
-            except (KeyError, ValueError, FileNotFoundError):
-                exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+            exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
 
             # Add metadata to EXIF
             user_comment = piexif.helper.UserComment.dump(metadata_json)
@@ -774,6 +773,7 @@ class ImageGeneratorGUI:
             exif_bytes = piexif.dump(exif_dict)
 
             # Save the image with updated EXIF data
+            img = Image.open(upscaled_path)
             img.save(upscaled_path, "JPEG", exif=exif_bytes, quality=95)
 
             # Close the current window and open the new upscaled image
@@ -784,7 +784,7 @@ class ImageGeneratorGUI:
             self.load_images_from_results()
 
             # Show a success message
-            tk.messagebox.showinfo("Upscale Complete", f"Image upscaled and saved as {os.path.basename(upscaled_path)}")
+            tk.messagebox.showinfo("Upscale Complete", f"Image upscaled and saved as {new_filename}")
         else:
             # Show an error message if upscaling failed
             tk.messagebox.showerror("Upscale Failed", "Failed to upscale the image.")
