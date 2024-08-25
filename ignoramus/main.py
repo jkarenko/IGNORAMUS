@@ -53,6 +53,11 @@ class ImageGeneratorGUI:
         self.setup_keyboard_shortcuts()
         self.create_gallery()
 
+    def generate_image_keyboard(self):
+        # Workaround: Erase the newline character added by the Enter key
+        self.prompt_text.event_generate("<BackSpace>")
+        self.generate_image()
+
     def generate_image(self):
         if self.is_generating:
             return
@@ -486,8 +491,8 @@ class ImageGeneratorGUI:
     def setup_keyboard_shortcuts(self):
         self.master.bind("<Tab>", focus_next_widget)
         self.master.bind("<Shift-Tab>", focus_previous_widget)
-        self.master.bind("<Control-Return>", lambda event: self.generate_image())
-        self.master.bind("<Command-Return>", lambda event: self.generate_image())
+        self.master.bind("<Control-Return>", lambda event: self.generate_image_keyboard())
+        self.master.bind("<Command-Return>", lambda event: self.generate_image_keyboard())
 
         self.prompt_text.bind("<Tab>", focus_next_widget)
         self.prompt_text.bind("<Shift-Tab>", focus_previous_widget)
