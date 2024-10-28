@@ -16,22 +16,24 @@ def face_swap(swap_image_path, target_image_path):
         target_image = base64.b64encode(target_file.read()).decode('utf-8')
 
     properties = {
-        "swap_image": f"data:image/jpeg;base64,{swap_image}",
-        "target_image": f"data:image/jpeg;base64,{target_image}",
-        "disable_safety_checker": True
+        "local_source": f"data:image/jpeg;base64,{swap_image}",
+        "local_target": f"data:image/jpeg;base64,{target_image}",
+        "weight": 0.5,
+        "cache_days": 1,
+        "det_thresh": 0.1,
+        "request_id": ""
     }
 
-    output = replicate.run(
-        "omniedgeio/face-swap:1312a036be013a29527a1dffce2fbbd475fb134eb809f295859d435546d5c76b",
-        input=properties,
+    return replicate.run(
+        "xiankgx/face-swap:cff87316e31787df12002c9e20a78a017a36cb31fde9862d8dedd15ab29b7288",
+        input=properties
     )
-
-    return output
 
 
 def select_swap_image():
-    swap_image_path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.jpeg *.png")])
-    return swap_image_path
+    return filedialog.askopenfilename(
+        filetypes=[("Image files", "*.jpg *.jpeg *.png")]
+    )
 
 
 def create_exif_metadata(properties):
@@ -78,20 +80,26 @@ def perform_face_swap(target_image_path, output_dir):
         return None
 
     try:
-        output_url = face_swap(swap_image_path, target_image_path)
+        response = face_swap(swap_image_path, target_image_path)
 
-        # Download and save the face-swapped image
-        response = requests.get(output_url)
-        if response.status_code == 200:
+        # Check if the response indicates success
+        if response['code'] == 200:
+            output_url = response['image']
             output_filename = f"face_swapped_{os.path.basename(target_image_path)}"
             output_path = os.path.join(output_dir, output_filename)
-            with open(output_path, 'wb') as f:
-                f.write(response.content)
 
-            # Copy EXIF data from the original image to the face-swapped image
-            copy_exif_data(target_image_path, output_path)
+            # Download and save the face-swapped image
+            img_response = requests.get(output_url)
+            if img_response.status_code == 200:
+                with open(output_path, 'wb') as f:
+                    f.write(img_response.content)
 
-            return output_path
+                # Copy EXIF data from the original image to the face-swapped image
+                copy_exif_data(target_image_path, output_path)
+
+                return output_path
+            else:
+                return None
         else:
             return None
     except Exception as e:
@@ -110,8 +118,7 @@ def add_face_swap_button(button_frame, target_image_path, output_dir, refresh_ga
 
 
 def handle_face_swap(target_image_path, output_dir, refresh_gallery_callback):
-    output_path = perform_face_swap(target_image_path, output_dir)
-    if output_path:
+    if output_path := perform_face_swap(target_image_path, output_dir):
         tk.messagebox.showinfo("Face Swap Complete", f"Face-swapped image saved as {os.path.basename(output_path)}")
         refresh_gallery_callback()
     else:

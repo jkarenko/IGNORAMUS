@@ -190,6 +190,7 @@ class ImageGeneratorGUI:
                 "guidance": 3.0,
                 "interval": 2.0,
                 "safety_tolerance": 5,
+                "prompt_upsampling": True,
             },
             "dev": {
                 "guidance": 3.5,
@@ -454,15 +455,16 @@ class ImageGeneratorGUI:
             face_image_path = self.face_image_path.get()
             if face_image_path:
                 for image in processed_images:
-                    swapped_output = face_swap(face_image_path, image['file_name'])
-                    if swapped_output:
+                    response = face_swap(face_image_path, image['file_name'])
+                    if response and response.get('code') == 200:
+                        swapped_output = response['image']
                         # Download and save the face-swapped image
-                        response = requests.get(swapped_output)
-                        if response.status_code == 200:
+                        img_response = requests.get(swapped_output)
+                        if img_response.status_code == 200:
                             # Save the face-swapped image temporarily
                             temp_file = f"{image['file_name']}_temp.jpg"
                             with open(temp_file, 'wb') as f:
-                                f.write(response.content)
+                                f.write(img_response.content)
 
                             # Create EXIF metadata with original properties
                             exif_dict = create_exif_metadata(properties, model)
