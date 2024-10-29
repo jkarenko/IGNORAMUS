@@ -49,7 +49,7 @@ class ImageGeneratorGUI:
 
         self.common_vars = {}
         self.model_specific_vars = {
-            "pro": {},
+            "1.1-pro": {},
             "dev": {},
             "schnell": {}
         }
@@ -139,7 +139,7 @@ class ImageGeneratorGUI:
         # Model selection
         ttk.Label(left_frame, text="Select Model:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
         self.model_var = tk.StringVar(value="schnell")
-        self.model_combo = ttk.Combobox(left_frame, textvariable=self.model_var, values=["pro", "dev", "schnell"],
+        self.model_combo = ttk.Combobox(left_frame, textvariable=self.model_var, values=["1.1-pro", "dev", "schnell"],
                                         state="readonly")
         self.model_combo.grid(row=0, column=1, padx=10, pady=10, sticky="we")
         self.model_combo.bind("<<ComboboxSelected>>", self.update_parameter_fields)
@@ -185,7 +185,7 @@ class ImageGeneratorGUI:
         }
 
         self.default_values = {
-            "pro": {
+            "1.1-pro": {
                 "steps": 25,
                 "guidance": 3.0,
                 "interval": 2.0,
@@ -210,11 +210,11 @@ class ImageGeneratorGUI:
         }
 
         self.model_specific_vars = {
-            "pro": {
-                "steps": tk.IntVar(value=self.default_values["pro"]["steps"]),
-                "guidance": tk.DoubleVar(value=self.default_values["pro"]["guidance"]),
-                "interval": tk.DoubleVar(value=self.default_values["pro"]["interval"]),
-                "safety_tolerance": tk.IntVar(value=self.default_values["pro"]["safety_tolerance"]),
+            "1.1-pro": {
+                "steps": tk.IntVar(value=self.default_values["1.1-pro"]["steps"]),
+                "guidance": tk.DoubleVar(value=self.default_values["1.1-pro"]["guidance"]),
+                "interval": tk.DoubleVar(value=self.default_values["1.1-pro"]["interval"]),
+                "safety_tolerance": tk.IntVar(value=self.default_values["1.1-pro"]["safety_tolerance"]),
             },
             "dev": {
                 "image_path": tk.StringVar(),
@@ -235,7 +235,7 @@ class ImageGeneratorGUI:
         }
 
         self.step_values = {
-            "pro": {
+            "1.1-pro": {
                 "guidance": 0.1,
                 "steps": 1,
                 "interval": 0.1,
@@ -336,7 +336,7 @@ class ImageGeneratorGUI:
                     slider_frame = ttk.Frame(self.param_frame)
                     slider_frame.grid(row=row, column=1, padx=5, pady=5, sticky="we")
 
-                    if model == "pro":
+                    if model == "1.1-pro":
                         if param == "guidance":
                             min_val, max_val, step = 2, 5, 0.1
                         elif param == "steps":
