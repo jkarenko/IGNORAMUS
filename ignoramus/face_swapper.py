@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 import replicate
 import requests
 from PIL import Image
@@ -80,31 +80,34 @@ def perform_face_swap(target_image_path, output_dir):
         return None
 
     try:
-        response = face_swap(swap_image_path, target_image_path)
-
-        # Check if the response indicates success
-        if response['code'] == 200:
-            output_url = response['image']
-            output_filename = f"face_swapped_{os.path.basename(target_image_path)}"
-            output_path = os.path.join(output_dir, output_filename)
-
-            # Download and save the face-swapped image
-            img_response = requests.get(output_url)
-            if img_response.status_code == 200:
-                with open(output_path, 'wb') as f:
-                    f.write(img_response.content)
-
-                # Copy EXIF data from the original image to the face-swapped image
-                copy_exif_data(target_image_path, output_path)
-
-                return output_path
-            else:
-                return None
-        else:
-            return None
+        return perform_face_swap_and_save(
+            swap_image_path, target_image_path, output_dir
+        )
     except Exception as e:
         print(f"Error during face swap: {str(e)}")
         return None
+
+
+def perform_face_swap_and_save(swap_image_path, target_image_path, output_dir):
+    response = face_swap(swap_image_path, target_image_path)
+
+    if response['code'] != 200:
+        return None
+    output_url = response['image']
+    output_filename = f"face_swapped_{os.path.basename(target_image_path)}"
+    output_path = os.path.join(output_dir, output_filename)
+
+    # Download and save the face-swapped image
+    img_response = requests.get(output_url)
+    if img_response.status_code != 200:
+        return None
+    with open(output_path, 'wb') as f:
+        f.write(img_response.content)
+
+    # Copy EXIF data from the original image to the face-swapped image
+    copy_exif_data(target_image_path, output_path)
+
+    return output_path
 
 
 # This function should be called from main.py
